@@ -21,7 +21,7 @@ COOKIE_STR = (
 
 def get_h5(page: int, t: int) -> str:
     result = subprocess.run(
-        ['node', os.path.join(SCRIPT_DIR, 'sign_wrapper.js'),
+        ['node', os.path.join(SCRIPT_DIR, 'sign_wrapper.cjs'),
          str(page), str(t), COOKIE_STR],
         capture_output=True, text=True, timeout=15
     )
