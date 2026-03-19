@@ -4,6 +4,10 @@ import json
 import time
 import os
 
+# 清除代理环境变量，避免系统代理干扰请求
+for _k in ('http_proxy', 'https_proxy', 'HTTP_PROXY', 'HTTPS_PROXY'):
+    os.environ.pop(_k, None)
+
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # 从浏览器 F12 复制完整 cookie（sessionid 过期时更新此处）
