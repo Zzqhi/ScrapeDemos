@@ -43,13 +43,25 @@ headers = {
 }
 cookies = {"sessionid": COOKIE_STR.split("sessionid=", 1)[1].split(";")[0]}
 
-page = 1
-t = int(time.time() * 1000)
-h5 = get_h5(page, t)
-
 url = "https://www.mashangpa.com/api/problem-detail/16/data/"
-data = json.dumps({"page": page, "t": t, "h5": h5}, separators=(',', ':'))
-response = requests.post(url, headers=headers, cookies=cookies, data=data)
+all_data = []
 
-print(response.text)
-print(response)
+for page in range(1, 21):
+    t = int(time.time() * 1000)
+    h5 = get_h5(page, t)
+    data = json.dumps({"page": page, "t": t, "h5": h5}, separators=(',', ':'))
+    response = requests.post(url, headers=headers, cookies=cookies, data=data)
+    print(f"第{page}页: {response.status_code}")
+    try:
+        result = response.json()
+        all_data.append(result)
+        print(result)
+    except Exception as e:
+        print(f"解析失败: {e}")
+        print(response.text)
+    time.sleep(1)
+
+with open(os.path.join(SCRIPT_DIR, 'result.json'), 'w', encoding='utf-8') as f:
+    json.dump(all_data, f, ensure_ascii=False, indent=2)
+
+print(f"\n完成，共抓取{len(all_data)}页数据，已保存到 result.json")

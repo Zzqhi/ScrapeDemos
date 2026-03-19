@@ -10951,10 +10951,3 @@ window.PcSign = new window.Sign({
         e.message;
     }
 });
-
-// page, timestamp
-window.PcSign.sign({ page: 1, t: 1773813488355 }).then(res => {
-    console.log(res)
-    console.log(res.length)
-    process.exit(0)
-})
