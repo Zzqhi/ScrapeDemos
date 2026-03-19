@@ -11,12 +11,7 @@ for _k in ('http_proxy', 'https_proxy', 'HTTP_PROXY', 'HTTPS_PROXY'):
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # 从浏览器 F12 复制完整 cookie（sessionid 过期时更新此处）
-COOKIE_STR = (
-    "sessionid=sfc1pr7o3ah5ez7u03rbs1iexnmb7qi8; "
-    "Hm_lvt_0d2227abf9548feda3b9cb6fddee26c0=1773810151,1773810402; "
-    "HMACCOUNT=19F6CDE53094F092; "
-    "Hm_lpvt_0d2227abf9548feda3b9cb6fddee26c0=1773823619"
-)
+COOKIE_STR = "sessionid=sfc1pr7o3ah5ez7u03rbs1iexnmb7qi8"
 
 
 def get_h5(page: int, t: int) -> str:
