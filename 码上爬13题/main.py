@@ -41,8 +41,7 @@ headers = {
     "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
     "x-requested-with": "XMLHttpRequest"
 }
-cookies = {k.strip().split("=", 1)[0]: k.strip().split("=", 1)[1]
-           for k in COOKIE_STR.split(";")}
+cookies = {"sessionid": COOKIE_STR.split("sessionid=", 1)[1].split(";")[0]}
 
 page = 1
 t = int(time.time() * 1000)
