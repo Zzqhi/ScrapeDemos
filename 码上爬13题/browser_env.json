@@ -1,0 +1,24 @@
+[
+  {
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
+    "platform": "Win32",
+    "language": "zh-CN",
+    "languages": ["zh-CN", "zh"],
+    "hardwareConcurrency": 12,
+    "screen": { "width": 1920, "height": 1080, "availWidth": 1920, "availHeight": 1040 },
+    "outerWidth": 1920,
+    "outerHeight": 1040,
+    "devicePixelRatio": 1
+  },
+  {
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
+    "platform": "MacIntel",
+    "language": "zh-CN",
+    "languages": ["zh-CN", "zh"],
+    "hardwareConcurrency": 8,
+    "screen": { "width": 2560, "height": 1600, "availWidth": 2560, "availHeight": 1560 },
+    "outerWidth": 2560,
+    "outerHeight": 1560,
+    "devicePixelRatio": 2
+  }
+]
