@@ -1,0 +1,1 @@
+console.log(atob("aHR0cHM6Ly93d3cuZGhsLmNvbS9jbi16aC9ob21lL3RyYWNraW5nL3RyYWNraW5nLXN1cHBseS1jaGFpbi5odG1sP3N1Ym1pdD0xJnRhY2tpbmctaWQ9MTIzMjM0MyZ0cmFja2luZy1pZD0xMTIz"))
