@@ -8938,27 +8938,29 @@
                     try {
                         var rCH = wQ.length;
                         var ODH = gG(T);
+                        // Date.now()
                         YJH = kwH();
-                        // 时间差 Date.now() - window.bmak.startTs
+                        // Date.now() - window.bmak.startTs
                         var qlH = ZC(kwH(), Mz[kZ(typeof gE()[v9(Y2)], gU('', [][[]])) ? gE()[v9(FU)].apply(null, [xJ, qp, KB]) : gE()[v9(B5)](H4, qS, xI)].bmak[gE()[v9(If)](X6, vU, PCH)]);
-                        // do_en
+                        // "do_en"
                         var tXH = Mz[gE()[v9(B5)](gf, qS, xI)][gE()[v9(WF)].apply(null, [gc, rD, ck])] ? kZ(typeof rP()[NS(MO)], gU(kh()[rp(B5)].call(null, wZ, OV), [][[]])) ? rP()[NS(cE)].apply(null, [MEH, OP, YB, CTH]) : rP()[NS(qS)](ATH, WU, wYH, B5) : hI(typeof rP()[NS(f2)], gU(kh()[rp(B5)](wZ, OV), [][[]])) ? rP()[NS(BV)](ATH, Um, VP, XK) : rP()[NS(cE)].call(null, ZF, nm, QEH, GrH);
-                        // dm_en
+                        // "dm_en"
                         var bXH = Mz[hI(typeof gE()[v9(QP)], gU('', [][[]])) ? gE()[v9(B5)].call(null, vj, qS, xI) : gE()[v9(FU)](gG(gG({})), UE, XK)][sW()[Uk(Dh)].call(null, GJ, bI, Lf)] ? gj()[z5(fNH)].apply(null, [Xs, rD, Xs, BF]) : kh()[rp(gf)](Yp, sJ);
-                        // t_en
+                        // "t_en"
                         var rsH = Mz[gE()[v9(B5)](bF, qS, xI)][k4()[Zd(Mp)].call(null, vj, Q2)] ? sW()[Uk(bC)].call(null, Ld, gG(S4), Mm) : Lj()[Xd(hC)](nX, qS, FD, p3H);
                         // 'do_en,dm_en,t_en'
                         var EFH = kh()[rp(B5)].call(null, wZ, OV)[kZ(typeof Lj()[Xd(LQ)], gU([], [][[]])) ? Lj()[Xd(rD)].apply(null, [RV, rC, vU, UJ]) : Lj()[Xd(mG)](KV, Nm, jB, fv)](tXH, hI(typeof Lj()[Xd(BB)], gU('', [][[]])) ? Lj()[Xd(v5)].call(null, bs, JE, UF, rIH) : Lj()[Xd(rD)](gG(gG({})), sC, UJ, Cq))[Lj()[Xd(mG)](qf, Nm, X6, fv)](bXH, Lj()[Xd(v5)](NE, JE, nb, rIH))[Lj()[Xd(mG)].call(null, gc, Nm, gG(gG([])), fv)](rsH);
-                        // '0,0,0,0,4917,113,0;0,0,0,0,5009,113,0;0,0,0,0,4932,113,0;0,0,0,0,4733,113,0;' 实际上是获取 input 标签的属性
+                        // '0,0,0,0,4917,113,0;0,0,0,0,5009,113,0;0,0,0,0,4932,113,0;0,0,0,0,4733,113,0;' 需要确认函数执行逻辑
                         var KBH = BGH();
-                        // 字符串是 document.URL 的值  "https://www.dhl.com/cn-zh/home/tracking.html?submit=1&tacking-id=1232343&tracking-id=1232343"
+                        // "https://www.dhl.com/cn-zh/home/tracking.html?submit=1&tacking-id=1232343&tracking-id=1232343" 不确认是不是直接用的 location.href
                         var QsH = Mz[k4()[Zd(Ov)](gc, PMH)][tP()[pP(LQ)].call(null, FJ, KI, FU, gG(gG({})), nm)][tP()[pP(kB)](fwH, sK, GD, xJ, qf)](new (Mz[kh()[rp(tX)].apply(null, [wf, kd])])(tP()[pP(wZ)](Cq, Yj, dO, gG(gG(S4)), Rc),k4()[Zd(RV)](UJ, MW)), kh()[rp(B5)](wZ, OV));
-                        // '10,1' 跟进 Windows 应该就是 '10,1' 需要注意
+                        // "10,1" 需要验证
                         var HCH = (kZ(typeof kh()[rp(rG)], 'undefined') ? kh()[rp(vj)](hg, dIH) : kh()[rp(B5)](wZ, OV))[Lj()[Xd(mG)](YO, Nm, Ek, fv)](YvH, Lj()[Xd(v5)].call(null, gG(vU), JE, OP, rIH))[Lj()[Xd(mG)](gG([]), Nm, Eh, fv)](PkH);
+                        // 最好看一下
                         if (gG(LSH[hI(typeof rP()[NS(Ek)], 'undefined') ? rP()[NS(Xs)](vKH, MD, PO, NE) : rP()[NS(cE)](B5, Yk, JE, bO)]) && (kZ(A8H, gG(gG(c8))) || hq(PkH, S4))) {
-                            // 初始化：和screen相关
                             LSH = Mz[kZ(typeof gj()[z5(LZ)], 'undefined') ? gj()[z5(vU)](Rc, Q8H, gG(S4), VTH) : gj()[z5(GD)](lD, B5, RV, C5)][rP()[NS(S4)].apply(null, [f5H, QP, LZ, XK])](LSH, KTH(), n1(t8, [rP()[NS(Xs)].call(null, vKH, Ih, PO, NE), gG(c8)]));
                         }
+                        // 初始化
                         var CBH = jEH()
                           , DFH = PKH(CBH, dO)
                           , BBH = DFH[S4]
@@ -8980,26 +8982,24 @@
                           , IbH = fcH[dO]
                           , V6H = fcH[B5];
                         cwH();
+                        // 需要验证
                         var sCH = gU(gU(gU(gU(gU(BBH, VJH), IWH), jFH), UVH), pkH);
                         // "PiZtE"
                         var NsH = gE()[v9(Jp)](nv, cE, zd);
-                        // bRH 处理 window.bmak.startTs
+                        // bRH(window.bmak.startTs) 函数需要验证
                         var KSH = bRH(Mz[gE()[v9(B5)].call(null, JP, qS, xI)].bmak[gE()[v9(If)](gG(gG(vU)), vU, PCH)]);
-                        // 时间差 Date.now() - window.bmak.startTs
+                        // Date.now() - window.bmak.startTs
                         var OsH = ZC(kwH(), Mz[gE()[v9(B5)](Gk, qS, xI)].bmak[gE()[v9(If)](WU, vU, PCH)]);
-                        // 实际上时进行 parseInt vj=10， 10进制 也就是 UhH / XK 需要跟进 UhH
+                        // parseInt(UhH / XK, 10)
                         var rpH = Mz[hI(typeof k4()[Zd(bC)], 'undefined') ? k4()[Zd(cE)].call(null, Gk, PW) : k4()[Zd(XK)](t5, TC)](WV(UhH, XK), vj);
-                        // 入参 11, [] 返回 30261693 不确定是否采集数据
+                        // t8 = 11 xcH =30261693
                         var xcH = HxH(t8, []);
                         // Date.now()
                         var H6H = kwH();
-                        // LSH[rP()[NS(Vs)](vKH, dO, M6, rD)] windows浏览器显示 ";-1;dis;,7;true;true;true;-480;true;32;32;true;false;-1" 可能与环境有关，另外需要拷 xq 浏览器返回值为 "4540"
+                        // LSH = {}
                         var kDH = kh()[rp(B5)](wZ, OV)[Lj()[Xd(mG)](PD, Nm, rD, fv)](xq(LSH[rP()[NS(Vs)](vKH, dO, M6, rD)]));
-                        // 'B04A457B6BA3190E8DE53EC5E7BA7FEB' 跟进
                         var dpH = G0H();
-                        // {mis:0,og:"sm"} 返回对象
                         var HPH = fBH(dpH, A8H);
-                        // 判断的是 window.bmak.firstLoad 可能第一次加载的时候会进来，需要注意
                         if (Mz[gE()[v9(B5)](tX, qS, xI)].bmak[Lj()[Xd(Sf)](bI, Gb, Kv, ks)]) {
                             k6H();
                             YBH();
@@ -9008,7 +9008,6 @@
                             fJH = hP(O, []);
                             bFH = hP(D0, []);
                         }
-                        // 采集浏览器指纹，目前是明文
                         var r6H = qSH();
                         var MXH = FnH()(n1(t8, [tP()[pP(mG)].apply(null, [Wh, rwH, Yk, gG([]), H4]), Mz[gE()[v9(B5)](GD, qS, xI)].bmak[gE()[v9(If)](WU, vU, PCH)], k4()[Zd(Xl)](Sf, dS), HxH(FM, [r6H]), rP()[NS(AZ)].apply(null, [QNH, Ek, SwH, lF]), BcH, sW()[Uk(xX)](Kx, U1, Rf), sCH, kZ(typeof gE()[v9(M6)], 'undefined') ? gE()[v9(FU)](gG(gG(vU)), Rs, Fg) : gE()[v9(lb)](rG, C7H, v7H), qlH]));
                         pCH = k3(qlH, MXH, PkH, sCH);
