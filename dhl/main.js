@@ -1,21 +1,161 @@
-let cookies = `cookieDisclaimer=seen; tracking-id=1232343; bm_sz=BCFBDD7C30070D07C892BD3A5C6FF1F2~YAAQSA7SF6JrKhadAQAAGynBIh8gIQ7m1Gvoevc0zb+voXwqsUs+6ldmEqtqd8GN8aD6ZLcb8JzR8htCNhU4LWpLJGlzzKLmdISVc50lXrQRvV1KRu7b+kAMvTEqb2EhcCabwsrpYbmOIK48sxCPF4RPPhavrVai6Cf0iN0cv3OqiFfEpzYXn3dfBFOgAYZiZVl4B0hvANESoGduib1z4/7dh+2DvCJjWNvdPq+9syq1zmsey1HxpLUY+5d8YuPbyIDnNxC0pFqCeFjQIAfDdl3Fbsq+ecK6cnP/JJjKpJL4Y/7zMA+V92WqvcNdJaPRGRtsGg+o7g0fcQEXh2kR3ekDOM6M6ylNI4rWCNNI/V2XXjvt/LCJaZAJT7+ek2sLx+xWcDnAlyhQIegouCxIw0B0GplY6fKEl1twUdM6v8eIUxLl~4339763~4601655; sec_cpt=FF8C6B0115A7D9A9A24FBCAD476C6B34~1~YAAQSA7SF6NrKhadAQAAGynBIg7BHH6oNS45bwgMux3SMo21wfHEI1fiQL9K4zE1cJiKL/ulKaNIEGiSbA8K6hNbNEVInp2sBXmjwIlRzKGERdB15UDQVBYMXqqwrOFJw6Uxszg7lcvc7NrinURS69MbOLHjoyo76qPhGhsfisu/0Cfk9xNx4yBry374wGbvywu4GQ1mplJ9+0wXal8vFbCZGuLW1tDLk8ghRvbKtAdF94zuf8wxl1KJ98iEIbjftftcy3VUjUUkBPKlKFtTbN/+Ol2lxECO7bxlgOa1jpCgtJ1jNp+kkORS2RZZVVMDE2zF6N7EBsIHZZ4Q3U4IwuffTYCIeMaHraUsRYnb6LM11kqcMBSpvuYWAYkWy/Z3n1N+/1PncN9jw3oPbUORjU3HviPnoLyuDVPdGC9R3RKP7yBYcddw2US0PdI9D5a2vyoKsiOR2k40/qc2SppbJvgn7vnG0v9yhbCpjlitBzCkrrUX0MR8bEiNjcJBk3SjFcUKZH6TLln6v/5Ji03WAn6JrysHBh//NinCjXANp+X02a1fF52P+qlBmZ93UudNcSBBvaTNTi2exo1Cx2NRBNUjPjA+69DWpMecYDw0hH48pNxNI0Xl2TXmHTAVec9AYZkpDzGazyBbJzg6U4Z9iqTDeYhlVyXwD2Sdw0+BeYrYo1JrCL3aNQYzv6WqZcZhr65rjQ4Cov/T+2a+bvpbsoIF97pGW1c6ltr5Mpq3lYOrRW9t2jZcPDRZEXmC7neHLddijUvGO4zk/FE40rwXHaUGmLqbHXi0OhgMXVidrlVHZmlbGv7qy4qSa99EnjC215MkxLKsnNpMXH5Ho1n+Ex7Wkd6uKwLol1mT0e5ub2++3fw=; bm_sv=E14C55F020FBA7627DA45D22A7C16740~YAAQSA7SF8ZrKhadAQAALyrBIh/lQkZHv9Nc6S25iyKiC1QqFt/vWRnj653poUZe6YfRCo4hwy5aju2KdObeAMkR5cIQ1G4l4xOes8OkVVx6/vBp/Nk3DDFbSQ0SaE9LAC5zl/s2vBmzrnnCWCGIGL+mJl+GxaM7S6ak4aE+6zVwWwVaRfuvd2Q0uegxDS1jyi7BZPrIQMRe6s4TnVLxdAhmgijGILhOoMD62PU5POHR3qbsxoHxAg7MTdZq~1; _abck=0327EB500BAF7DE42A8169D9A44C9755~0~YAAQSA7SF7tsKhadAQAAAC7BIg+U44FrHr4eaWXlkbIVMdzWUA/8qB20/4B+VAyEDEpNXlYpfFu/WxTJrKWfJjRZ52jCKusMc8gDHxIxAKifittjvslwQYjel8JL80eWtSfwtgFueFRYgCfzQBCuKzr9ukwUq5MxryGxY4YspcVSWtMAupi9xbo0tslZFsFicWGd5fL58U7GcNPL4gObdYN0D0jBufeiefcc9WZgNAZPhNEJWMZa25X3DZb1jlvUrZOfTXANC72wuGz8cVnBJ0iBhOsHIbO15SpbtysXSg5uWaiPgx9+QYRRUn06thhELtZQtMo/9ccYdRwIXVq6YXexEnaWjSq6MwegzP0D6twfVYdzWW1Aobw+kh6BdEwuO3aqpTm7UzpWWEkDWL2D8ZduuVZuZdPesStHCkD5egE5BvaEOgtpWZGcuJlQikpLH/aQXShlLXhZO89Pj0oM1xo5NDStV8qBCLabNqINLcLv/zkbViAJYHAYz2+oHrE3UZ7VIMFbEulvKrX9Sr9zlDug6wHLIfUktstUukK8YqTLdFhEv7ANTfS7Tdk/XDLV0o9eYMqClwwu0qfQlLBzr6mLf7CQFJr05m44IkLztjPybTPA6zA78D2AkKIelfiRzxu9Zi6Zp4hSrGUnX93+2JKgZplyHR8NfQzw9eBTcGIJAZkmkItvdOBXfXgMOrpg2z0kYLXmhiW6KcNGcXY77Cvfe9cnLvkARRR3/fh2y21U91YdCc9PcQ2DDONnXMyTq3LSwDjcH0xb3f6PV40eN9N0n91H9aGHxznPxwi2clWUjpEyykyoYnOXuQcrJU1ogFSF1kkcF0d9BDjB3G3lNFHqAvHcmRU0AgqpvZngZ+T9tFlj4CgH+GD4lpgbtcG/wvrA9OuDFe+e0Mztf5b9UpwJLHHyg+ehnFV5hKGbxLarAQpysOLRpEgsDqyZt5nRrbQyre7SepUF0DbHxGfAr35dzPn1hK5PYQx4+qBB2h09n+XQEZxJrCCVU0kMDROKErDDtCNwCvizN52ZTD6pr+ZCqS3RsdX2NxgZBeAnwoTh81UN9GrP~-1~-1~-1~AAQAAAAF%2f%2f%2f%2f%2f0ugpP+nM+tFtJfwfj6i7dv1xAfoSH%2fg0flXUJb+kkEHUgN+nMrZkNrXmid2kX+n8PXi8nap8HJtLoVXC%2fdmqo0S126M+TEAb%2f22~-1; OptanonAlertBoxClosed=2026-03-25T02:09:39.404Z; OnetrustActiveGroups=%2CC0001%2CC0002%2CC0003%2CC0004%2CBIN01%2CC0007%2CMAP01%2C; OptanonConsent=isGpcEnabled=0&datestamp=Wed+Mar+25+2026+10%3A09%3A39+GMT%2B0800+(%E4%B8%AD%E5%9B%BD%E6%A0%87%E5%87%86%E6%97%B6%E9%97%B4)&version=202411.1.0&browserGpcFlag=0&isIABGlobal=false&hosts=&consentId=05c8f270-de77-4401-b6d2-eb3d507a47a8&interactionCount=1&isAnonUser=1&landingPath=NotLandingPage&groups=C0001%3A1%2CC0002%3A1%2CC0003%3A1%2CC0004%3A1%2CBIN01%3A1%2CC0007%3A1%2CMAP01%3A1&intType=1; s_ccst={%22ecid%22:true%2C%22aa%22:true%2C%22target%22:true}; AMCVS_9D88879D5579828F7F000101%40AdobeOrg=1; AMCV_9D88879D5579828F7F000101%40AdobeOrg=179643557%7CMCIDTS%7C20538%7CMCMID%7C27838232765919467123435917922331501420%7CMCAAMLH-1775009384%7C9%7CMCAAMB-1775009384%7CRKhpRz8krg2tLO6pguXWp5olkAcUniQYPHaMWWgdJ3xzPWQmdj0y%7CMCOPTOUT-1774411784s%7CNONE%7CvVersion%7C5.5.0; s_sq=dhlglobalrolloutprod%3D%2526c.%2526a.%2526activitymap.%2526page%253Dhttps%25253A%25252F%25252Fwww.dhl.com%25252Fcn-zh%25252Fhome%25252Ftracking.html%25253Fsubmit%25253D1%252526tacking-id%25253D1232343%252526tracking-id%25253D1232343%2526link%253D%2525E5%252585%2525A8%2525E9%252583%2525A8%2525E6%25258E%2525A5%2525E5%25258F%252597%2526region%253Donetrust-button-group%2526.activitymap%2526.a%2526.c%2526pid%253Dhttps%25253A%25252F%25252Fwww.dhl.com%25252Fcn-zh%25252Fhome%25252Ftracking.html%25253Fsubmit%25253D1%252526tacking-id%25253D1232343%252526tracking-id%25253D1232343%2526oid%253D%2525E5%252585%2525A8%2525E9%252583%2525A8%2525E6%25258E%2525A5%2525E5%25258F%252597%2526oidt%253D3%2526ot%253DSUBMIT; da_sid=8205C8D28E3FAE851469AA13A974B95766.0|4|0|3; da_lid=B136FBE19A7DEA193C62BB99EB7647D4DC|0|0|0; da_intState=; at_check=true`
+const fs = require("fs");
+const path = require("path");
+const { extractSeed1 } = require("./intermediate/extract_seed1");
 
-const cookieDict = Object.fromEntries(
-  cookies
-    .split("; ")
-    .filter(Boolean)
-    .map((item) => {
-      const index = item.indexOf("=");
-      if (index === -1) {
-        return [item, ""];
-      }
-      return [item.slice(0, index), item.slice(index + 1)];
-    })
-);
+const USER_AGENT =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36";
 
-console.log(cookieDict['_abck']);
-console.log(cookieDict['ak_bmsc']);
-console.log(cookieDict['bm_sz']);
-console.log(cookieDict['bm_sv']);
+const PAGE_URL = "https://www.dhl.com/cn-zh/home/tracking.html";
+const PAGE_PARAMS = new URLSearchParams({
+  submit: "1",
+  "tacking-id": "1232343",
+  "tracking-id": "1232343",
+});
 
+const pageHeaders = {
+  accept:
+    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+  "accept-language": "zh-CN,zh;q=0.9",
+  "cache-control": "no-cache",
+  pragma: "no-cache",
+  priority: "u=0, i",
+  "sec-ch-ua": '"Chromium";v="146", "Not-A.Brand";v="24", "Google Chrome";v="146"',
+  "sec-ch-ua-mobile": "?0",
+  "sec-ch-ua-platform": '"Windows"',
+  "sec-fetch-dest": "document",
+  "sec-fetch-mode": "navigate",
+  "sec-fetch-site": "same-origin",
+  "sec-fetch-user": "?1",
+  "upgrade-insecure-requests": "1",
+  "user-agent": USER_AGENT,
+};
 
+function buildCookieString(cookieMap) {
+  return Array.from(cookieMap.entries())
+    .map(([name, value]) => `${name}=${value}`)
+    .join("; ");
+}
+
+function updateCookieJar(cookieMap, response) {
+  const setCookies =
+    typeof response.headers.getSetCookie === "function"
+      ? response.headers.getSetCookie()
+      : [];
+
+  for (const entry of setCookies) {
+    const firstPart = String(entry).split(";")[0];
+    const eqIndex = firstPart.indexOf("=");
+    if (eqIndex === -1) continue;
+    cookieMap.set(firstPart.slice(0, eqIndex), firstPart.slice(eqIndex + 1));
+  }
+}
+
+async function fetchText(url, headers, cookieMap) {
+  const requestHeaders = { ...headers };
+  const cookie = buildCookieString(cookieMap);
+  if (cookie) {
+    requestHeaders.cookie = cookie;
+  }
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: requestHeaders,
+    redirect: "follow",
+  });
+
+  updateCookieJar(cookieMap, response);
+
+  if (!response.ok) {
+    throw new Error(`GET ${url} failed: ${response.status} ${response.statusText}`);
+  }
+
+  return await response.text();
+}
+
+function extractLastScriptSrc(html) {
+  const regex = /<script\b[^>]*>/gi;
+  let match;
+  let lastSrc = null;
+
+  while ((match = regex.exec(html)) !== null) {
+    const tag = match[0];
+    if (!/\btype=["']text\/javascript["']/i.test(tag)) continue;
+
+    const srcMatch = tag.match(/\bsrc=["']([^"']+)["']/i);
+    if (!srcMatch) continue;
+
+    lastSrc = srcMatch[1];
+  }
+
+  if (!lastSrc) {
+    throw new Error("Could not find the last <script type=\"text/javascript\"> src in HTML");
+  }
+
+  return lastSrc;
+}
+
+function printCookieSummary(cookieMap) {
+  const keys = Array.from(cookieMap.keys());
+  console.log(`Session cookies: ${keys.join(", ")}`);
+
+  for (const name of ["_abck", "ak_bmsc", "bm_sz", "bm_sv"]) {
+    const value = cookieMap.get(name);
+    if (!value) {
+      console.log(`${name}: <missing>`);
+      continue;
+    }
+    console.log(`${name}: ${value.slice(0, 80)}${value.length > 80 ? "..." : ""}`);
+  }
+}
+
+async function main() {
+  const cookieMap = new Map();
+  const referer = `${PAGE_URL}?${PAGE_PARAMS.toString()}`;
+
+  // 第一次请求：打开 DHL 追踪页，建立初始 cookie。
+  const html = await fetchText(referer, pageHeaders, cookieMap);
+  const scriptSrc = extractLastScriptSrc(html);
+  const scriptUrl = new URL(scriptSrc, PAGE_URL).toString();
+
+  console.log(`script_src: ${scriptSrc}`);
+  printCookieSummary(cookieMap);
+
+  // 第二次请求：拉取当前 bundle，并提取 bundle 内嵌 seed[1]。
+  const scriptHeaders = {
+    accept: "*/*",
+    "accept-language": "zh-CN,zh;q=0.9",
+    "cache-control": "no-cache",
+    pragma: "no-cache",
+    priority: "u=2",
+    referer,
+    "sec-ch-ua": '"Chromium";v="146", "Not-A.Brand";v="24", "Google Chrome";v="146"',
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": '"Windows"',
+    "sec-fetch-dest": "script",
+    "sec-fetch-mode": "no-cors",
+    "sec-fetch-site": "same-origin",
+    "user-agent": USER_AGENT,
+  };
+
+  const scriptText = await fetchText(scriptUrl, scriptHeaders, cookieMap);
+  const scriptPath = path.join(__dirname, "test.js");
+  fs.writeFileSync(scriptPath, scriptText, "utf8");
+  console.log(`JS saved to ${scriptPath} (${scriptText.length} chars)`);
+
+  const seedResult = extractSeed1(scriptText);
+  if (seedResult.error) {
+    throw new Error(`extractSeed1 failed: ${seedResult.error}`);
+  }
+
+  console.log(`bundle seed[1]: ${seedResult.seed1}`);
+  if (seedResult.candidates.length !== 1) {
+    console.log(`seed candidates: ${JSON.stringify(seedResult.candidates)}`);
+  }
+
+  printCookieSummary(cookieMap);
+}
+
+main().catch((error) => {
+  console.error(error.stack || String(error));
+  process.exitCode = 1;
+});

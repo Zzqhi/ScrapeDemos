@@ -206,10 +206,10 @@ function DQN(str) {
 
 | 函数 | 返回值 | 说明 |
 |---|---|---|
-| `vMN()` / G0H | `"A27741CBDDC9103CA90D379DC833A175"` | 从 cookie 中读取的 hash，可能是 `_abck` cookie 的一部分 |
-| `Yx4()` / fBH | `{mis:0, og:"sm"}` | mis=0 表示 hash 没有变化，og="sm" 是某种标记 |
+| `vMN()` / G0H | `"A27741CBDDC9103CA90D379DC833A175"` | 读取 `_abck` cookie 第一个 `~` 前的 hash，详见 `screen_node.js` |
+| `Yx4()` / fBH | `{mis:0, og:"sm"}` | 比较当前与上次 cookie hash，mis=0 匹配/-1 不匹配，og="sm" 初始/旧hash，详见 `screen_node.js` |
 | `UMN()` / bRH | `[109305, 101]` | startTs 的某种变换（随机因子 + 校验） |
-| `BX4(PX,[])` / HxH | `30261689` | 可能与时间或环境相关的采集值 |
+| `BX4(PX,[])` / HxH | `30261689` | 25 属性位掩码（navigator/Math/window），详见 `screen_node.js` |
 | `pIN()` / BGH | `"0,0,0,0,4706,113,0;..."` | 页面 input 元素属性（type, maxLength, value 等） |
 | `wON()` | `"0,0,0,0"` | 鼠标事件（无操作时为 0） |
 | `gFN()` | `"0,0,0,0"` | 键盘事件（无操作时为 0） |
