@@ -94,17 +94,14 @@
   - 2026-03-31 当前 f 版轮换 bundle 仍可提取:
     - `node extract_seed1.js current_live_bundle_20260331f.js`
     - 输出 `seeds[1] = 7602719`
+  - 2026-03-31 当前 g 版轮换 bundle 仍可提取:
+    - `node extract_seed1.js current_live_bundle_20260331g.js`
+    - 输出 `seeds[1] = 8530944`
   - 四个 bundle 版本全部通过:
     - `tmp_dhl_current_bundle.js` → seeds[1] = 1245143
     - `test.js` → seeds[1] = 3606464
     - 浏览器 live bundle (2026-03-27) → seeds[1] = 3795670
     - 浏览器 live bundle (2026-03-31) → seeds[1] = 2102249
-
----
-
-## 未完成
-
-### P0 — 加密管线剩余
 
 - [x] **`AhN` 字符置换算法 — 完整还原** ✅ → `screen_node_xag_live.js:ahnPermute()`
   - **关键发现**: 不是字符级 shuffle，是**按 `:` 分隔符拆分 token 后做 Fisher-Yates shuffle**
@@ -131,26 +128,12 @@
     4. `header + ";" + timing + ";" + encrypted` → 最终拼接
   - **之前的 encode9013PayloadLive 有两个错误**: 缺少 AhN 步骤 + 密钥用反了（已修正）
 
-- [x] **mst 31 字段完整追踪** ✅ (2026-03-30, HmK/gpK 运行时断点)
+- [x] **mst 31 字段变量映射完成** ✅ (2026-03-30, HmK/gpK 运行时断点)
+  - ⚠️ **注意: 变量映射和公式识别已完成，但多数子字段的生成逻辑尚未落地到代码中，详见未完成区「buildMstLive() 子字段审计」**
   - 变量映射 (live bundle): C2K→kevl, qPK→mevl, sDK→tevl, mPK→devl, CTK→dmvl,
     vEK→pevl, FzK→tovl, GNK→delt, qrK→it, PEK→sts, HzK→fct, bLK→dd2,
     mEK→kc, OtK→mc, U2K→ww8, BDK→pc, qtK→tc, hsK→ssts, qCK→tst,
     htK→nfas, NrK→jsrf, VPK→jsrf1/jsrf2, n6K→signals, MrK+brK+j0K→dvc
-  - 新确认公式:
-    - kevl/mevl/tevl = 变量 | 默认值 (1/32/32)，位掩码 OR
-    - devl = doe 字符串第 2 字段 (doc event 时间戳差)
-    - dmvl = dme 字符串第 2 字段 (device motion 时间戳差)
-    - tovl = devl + dmvl
-    - delt = Date.now() - bmak.startTs
-    - **ww8 = parseInt(dd2 / 6, 10)** (dd2 除以 6 取整)
-    - **ssts = delt + 1** (捕获时间差 1ms)
-    - **tst = tovl** (等值)
-    - fct = fpState.td (指纹计算耗时)
-    - nfas = 30261689 (dispatcher case 62, bundle 常量)
-    - dvc = MrK + "," + brK + "," + j0K
-      - MrK = SY(delt, ajr, fct, tovl) — canvas/webgl 指纹哈希
-      - brK = 小时间差 (~8ms)
-      - j0K = 插件枚举字符串
   - 新发现的 payload 字段 (OvK 完整结构):
     - `dsi` 数组: get/set/ico/ift/xof/xot/wev/wre/wdr/iks/lds/sst
     - `wsl` 字符串: WebGL/screen 指纹
@@ -161,7 +144,8 @@
     - `sww` 包含 s024-s074 大量 Client Hints 数据
     - `fwd` 字段不在当前 live bundle OvK 中
 
-- [x] **mst builder 落地到还原脚本** ✅ (2026-03-30)
+- [x] **mst builder 框架落地到还原脚本** ✅ (2026-03-30)
+  - ⚠️ **注意: 函数框架已搭建，但多数子字段仍从 opts 透传或使用硬编码默认值，未经真实浏览器验证**
   - `screen_node_xag_live.js` 新增:
     - `buildMstLive()`
     - `computeMstDd2Live()`
@@ -172,7 +156,8 @@
   - `dvc` 当前支持显式传入 `dvc` 或 `dvcParts=[hash,delta,plugins]` 组装
   - 未解部分仍然是 `dvc.hash(SY)`、`jsrf1/jsrf2`、`signals` 的真实运行时来源
 
-- [x] **mst 当前 live bundle 实值捕获** ✅ (2026-03-30, JSON.stringify Hook)
+- [x] **mst 当前 live bundle 实值捕获** ✅ (2026-03-30, JSON.stringify Hook, headless 环境)
+  - ⚠️ **注意: 以下样本均来自 headless 环境，尚未在 Windows 真实浏览器上验证**
   - 通过 `inject_before_load + JSON.stringify(payload)` 直接抓到加密前明文 payload
   - 当前 bundle 路径: `ua5fmf0pQwkJm2u1Op`
   - 已确认当前 live payload 中：
@@ -193,6 +178,181 @@
     - `jsrf = "PiZtE"` ✅
     - `jsrf1/jsrf2` 每次请求都会变化
     - `dvc` 第 3 段插件串当前稳定为 `h+j+d+c+b+e+g+f+i+a+l+`
+
+- [x] **`ver`** — 已定位到当前 bundle 的初始化解码链 (2026-03-31)
+  - **每次 bundle 更新都会变**
+  - 2026-03-31 当前 paused-frame live 值: `y5rI+vtIYAZJrvGePz3kUram5oCNR/QVus0LswZEZeM=`
+  - 2026-03-31 同一路径后续轮换 bundle 的新值: `yacvPNkHbOPdHJGCxibCUnXbqZM6JrA0AUpc39c5d0c=`
+  - 2026-03-31 当前再后续轮换 bundle 的新值: `nvhrNrCoFGIbD/ukOAYB2m53Jy/bCtQW3jFLi/OeRmQ=`
+  - 2026-03-31 较早一次 hook 还抓到过旧值: `ubAhg4nzYgG/X9FbSuJd5myzi9xbP3+e6E5ZbEaQwAU=`
+    - 说明它确实是随 bundle/版本切换的字段；即使脚本 URL 路径不变，内容轮换后 `ver` 也会变化，不能继续保留旧硬编码
+  - 2026-03-31 动态/静态证据链:
+    - `l2X` 中 payload 主体通过 `lr9 = x5(R3, [key1, val1, key2, val2, ...])` 构造
+    - 暂停帧直接求值可得第 1 组 pair 为: `"ver" -> vF9`
+    - 当前 bundle `current_live_bundle_20260331c.js` 中只有 1 处定义:
+      `var vF9 = MO()[Bg(kO)](...)[MO()[Bg(Zh)](...)](bO()[Dl(I49)](...))`
+    - 暂停帧拆表达式结果:
+      - 左值 `MO()[Bg(kO)](...) = ""`
+      - 方法名 `MO()[Bg(Zh)](...) = "concat"`
+      - 右值 `bO()[Dl(I49)](...) = "y5rI+vtIYAZJrvGePz3kUram5oCNR/QVus0LswZEZeM="`
+      - 因此 `vF9 === ""["concat"](decoded_string)`
+    - 继续下钻当前 bundle 可见:
+      - `Dl(I49) = "ON"`，即 `bO()[Dl(I49)] === bO().ON`
+      - 当前缓存后的 getter 形态是 `function(){return A0;}`
+      - 初始化代码模板来自 `case U9`: `var A0 = LM(jK, G8, Ml); bO()[kC] = function(){ return A0; }`
+      - 即 `ver` 的 decoded string 进一步来自 `LM(480, 89, 96)` 这条 closure 缓存链
+    - 参与该表达式调用位点的入参是常量索引 `dz=480, IF=66, vg=96`，不是请求时动态数据
+    - 当前 bundle `current_live_bundle_20260331e.js` 再次确认结构不变，只是变量名和最终值轮换:
+      - 唯一赋值位点: `var kPf=Wq()[Cl(Fl)](rJf,fD,hV)[Pl(typeof Ls()[hd(rd)],kR([],[][[]]))?Ls()[hd(FR)](vC(vC(Vd)),lAf,z2,Oj):Ls()[hd(gH)].apply(null,[vC(Vd),WN,Gs,m0])](Ls()[hd(Sx)](VU,dE,YKh,KV));`
+      - 在该断点处逐项求值:
+        - 左值 `Wq()[Cl(Fl)](rJf,fD,hV) = ""`
+        - 方法名分支结果 = `"concat"`
+        - 右值 `Ls()[hd(Sx)](VU,dE,YKh,KV) = "nvhrNrCoFGIbD/ukOAYB2m53Jy/bCtQW3jFLi/OeRmQ="`
+      - 因此当前 e 版仍然满足 `kPf === ""["concat"](decoded_string)`，只是 decoded string 已换新值
+    - 当前 bundle `current_live_bundle_20260331f.js` 再继续轮换后，decoded string 的上游模板也进一步钉到初始化解码器:
+      - 现场单步从 `var kPf=...` 进入后，命中 `var px=function Qj9(Un9,NC9){...}`
+      - `Qj9` 的 `case mX` 明确是"批量注册 getter 并缓存"的模板：
+        `zb()[qn9[fU9]] = ...`
+        `var AA9 = zT9(fj(fj(xw)), vm9, Qn9);`
+        `zb()[qJ9] = function(){ return AA9; };`
+      - `case L2` 可见 `qn9 = NC9[0]`，随后 `fU9 = 0`
+      - `kw/Phr` 的 `case H0` 明确调用 `px(L2, [G29()])`
+      - 因此当前 f 版可以确认：
+        - getter 键名数组来源是 `G29()`
+        - `decoded_string` 的真正上游已不是直接明文 getter，而是 `Qj9(case mX) -> zT9(...) -> Of(ck, ...)` 这条初始化缓存链
+      - 这说明后续若要做纯静态 `extract_ver`，重点应该继续静态化 `zT9/Of(ck)`，而不是再追某个轮换后的局部变量名
+    - 当前 f 版继续下钻 `zT9` 后，新确认:
+      - `kw/Phr` 的 `case w0` 明确挂接:
+        `zT9 = function(SN9, fG9, B19) { return Of.apply(this, [ck, arguments]); }`
+      - 因此 `zT9` 只是转发壳，真正逻辑在 `Of/W09` 的 `case ck`
+      - `Of/W09` 定义形态:
+        `var Of = function W09(n59, nW9) { ... switch(n59) { ... case ck: { ... }}}`
+      - 当前 `case ck` 的静态上下文表明它不是请求时 hash，而是在已有对象/环境上做存在性检查后，返回某个对象方法结果:
+        - 入参对象是 `gc = YP[0]`
+        - 命中条件之一是某些 `WX[...]` / `gc[...]` 路径非空
+        - 返回语句形态是 `WX[...][...](gc)`
+      - 这进一步说明 `decoded_string` 的生成依赖 bundle 初始化期的对象图和缓存表，不是单纯的源码明文或脚本 URL 派生值
+    - 当前 f 版继续把 `case ck` 的索引层拆开后，又拿到一组更细的静态证据:
+      - 基础数值链来自同一个初始化 switch:
+        - `xw=1`
+        - `c5=2`
+        - `R8=3`
+        - `WH=4`
+        - `jn=5`
+        - `xJ=7`
+        - `sW=6`
+        - `Np=9`
+        - `hS=10`
+        - `hC=8`
+      - 因而 `case ck` 里几个关键索引可以直接静态算出:
+        - `np = xJ - Np + c5 * hC = 14` -> `Cw(np) = "rU"`
+        - `W6 = R8 - xJ * xw + Np * WH = 32` -> `SD(W6) = "DN"`
+        - `dA = xw * hS + c5 * jn - hC = 12` -> `Nn(dA) = "rk"`
+        - `nj = Np * WH - hC - xJ + hS = 31` -> `SD(nj) = "Pt"`
+        - `TC = WH + jn - R8 + hS * sW = 66` -> `Nn(TC) = "mU"`
+        - `Gn = sW + Np + hC - WH = 19` -> `Cw(Gn) = "U4"`
+      - 结合当前页面主世界直接求值，又拿到这些 getter 的运行时形态:
+        - `V5()[Cw(np)]` 的当前形态是缓存 getter: `function(){return hB;}`
+        - `jj()[SD(W6)]` 的当前形态是缓存 getter: `function(){return ll9;}`
+        - `zb()[Nn(dA)]` 的当前形态是缓存 getter: `function(){return AA9;}`
+        - `zb()[Nn(TC)]` 的当前形态仍是未缓存 wrapper:
+          `function(VU9, vm9, Qn9) { var AA9 = zT9(fj(fj(xw)), vm9, Qn9); zb()[qJ9] = function(){ return AA9; }; return AA9; }`
+        - `zb()[Nn(nj)]` 的当前形态是缓存 getter: `function(){return AA9;}`
+      - 同一轮主世界试读时，曾成功拿到一组返回值样本:
+        - `V5()[Cw(np)]() -> "Symbol"`
+        - `jj()[SD(W6)]() -> "iterator"`
+        - `zb()[Nn(dA)]() -> "Array"`
+        - `zb()[Nn(nj)]() -> "login"`
+      - 但重复直接调用 getter 会再次落回 `Qj9`/初始化链，说明这组 getter 的状态与当前时序强相关，不能把一次试读值直接当作最终稳定语义；后续仍应以 `case ck` 命中时的暂停帧为准
+      - 已把这一层静态提取固化进 `extract_ver_static.js`
+        - 作用: 从保存下来的 bundle 中直接提取 `G29` 表、基础数值链、`case ck` 的索引和值名映射
+        - 2026-03-31 对 `current_live_bundle_20260331f.js` 实跑:
+          - `baseValues = {xw:1,c5:2,R8:3,WH:4,jn:5,xJ:7,sW:6,Np:9,hS:10,wn:0,gW:33,hC:8,I3:128}`
+          - `caseCkIndexes = {np:14,W6:32,dA:12,nj:31,TC:66,Gn:19}`
+          - `caseCkKeys = {np:"rU",W6:"DN",dA:"rk",nj:"Pt",TC:"mU",Gn:"U4"}`
+        - 这说明 `Of(ck)` 的索引层已经可以纯静态自动化，下一步只剩把 `case ck` 里这些 key 对应的 getter/返回值链继续静态化
+      - 2026-03-31 对当前页面实际运行的 g 版 bundle 补充:
+        - 已从浏览器保存 `current_live_bundle_20260331g.js`，大小 `555388`
+        - `extract_ver_static.js` 当前对 g 版的 f-specific 提取会失败（`G29/case ck/registrationTemplates` 都未直接命中）
+        - 但已改成 best-effort，可继续稳定输出 `memo_init` 调用点：
+          - `xor0`: `case kx:{sz.OZ=Tbl[PA];M3.call(this,t7,[eS1_xor_0_memo_array_init()]);R88+=Lw;return '';}break;`
+          - `xor1`: `case OI:{v9l.OH=gYl[Qt];R88=Zl;M3.call(this,OI,[eS1_xor_1_memo_array_init()]);return '';}break;`
+          - `xor2`: `case xx:{vf.Km=v8l[fh];FU.call(this,Yx,[eS1_xor_2_memo_array_init()]);return '';}break;`
+          - `xor3`: `case l7:{BIl.YP=n4l[sv];FU.call(this,jH,[eS1_xor_3_memo_array_init()]);return '';}break;`
+        - 说明 g 版仍保留相同的 `eS1_xor_*_memo_array_init()` 分层，但外围 dispatcher/变量名已经整体轮换；后续需要从这些新 callsite 反推新的 `Q1/vG/L2` 等价关系
+        - 2026-03-31 已进一步切出 g 版对应的 3 组"批量挂 getter 并缓存"循环模板：
+          - `jsLoop`:
+            `case Tb:{... js()[dZl[cbl]] = ... var x7l = sz.call(null,Sf,OYl); js()[B9l] = function(){return x7l;}; ... }break;`
+          - `usLoop`:
+            `case bY:{... US()[R9l[HHl]] = ... var b9l = v9l(Lv,g1,P7l,cc); US()[Hbl] = function(){return b9l;}; ... }break;`
+          - `d1Loop`:
+            `case U8:{... d1()[mZl[cO]] = ... var cf = M3(cl,[Zwl,cv,YYl,tFl]); d1()[BYl] = function(){return cf;}; ... }break;`
+        - 同时拿到对应 entry case：
+          - `jsEntry`: `case t7:{var dZl=Yf[U7];YO(dZl[cc]);var cbl=cc;}break;`
+          - `usEntry`: `case OI:{var R9l=Yf[U7];fll(R9l[cc]);}break;`
+          - `d1Entry`: `case A8:{var mZl=cWl[U7];var cO=cc;}break;`
+        - 这三条与 f 版旧模板高度同构，可暂作等价映射假设：
+          - `jsLoop` ≈ 旧版 `jjLoop`
+          - `usLoop` ≈ 旧版 `V5Loop`
+          - `d1Loop` ≈ 旧版 `zbLoop`
+        - 依据：
+          - `jsLoop` 仅 2 参数缓存调用，形态最接近旧 `jj()[...] = ... ZR(c59,gl9)`
+          - `usLoop` 是直接缓存对象方法返回值，形态最接近旧 `V5()[...] = ... xS.call(...)`
+          - `d1Loop` 明确跨 dispatcher 调 `M3(cl, [...])`，形态最接近旧 `zb()[...] = ... zT9(...)`
+        - 2026-03-31 又进一步钉住 g 版三条 loop 的 helper 入口：
+          - `usLoop` 的 helper 别名:
+            `case AH:{ ... sz=function(Pxl,g7l){return BD.apply(this,[Lb,arguments]);}; return YO(Qf); }break;`
+            - 即 `usLoop -> sz -> BD(Lb, ...)`
+          - `jsLoop` 的 helper 别名:
+            `case t7:{ ... v9l=function(cZl,nml,S7l,QYl){return tIl.apply(this,[wg,arguments]);}; return fll(FGl); }break;`
+            - 即 `jsLoop -> v9l -> FU(wg, ...)`
+          - `d1Loop` 的 bridge:
+            `var cf = M3(cl,[Zwl,cv,YYl,tFl]);`
+            - 即 `d1Loop -> M3(cl, ...)`
+        - 因此当前最强的主链判断是：
+          - `d1Loop -> M3(cl, ...)` 才是 g 版最像旧 `zb -> zT9 -> Of(ck)` 的那条初始化解码链
+          - `usLoop/jsLoop` 更像旧版 `V5/jj` 的对象方法/属性名缓存层
+  - 排除项:
+    - 不是当前 Akamai script URL 的 SHA256(base64)
+    - 不是当前保存 bundle 文件 `current_live_bundle_20260331b.js` 的 SHA256(base64) (`3tpODgMar1IMH6V+Xy/8c3ZdVjE6htRj+ehUIz94sE8=`)
+    - 在线源码中搜不到最终明文值，说明它不是明文内嵌，而是运行时解码出的 bundle 常量
+  - 已落地:
+    - `screen_node_xag_live.js -> buildVerLive()` 已取消旧硬编码，改为必须外部提供
+    - `extract_ver.js` 新增：用于抓取当前 live 运行时 `ver`，避免继续手填过期值
+    - 2026-03-31 实跑验证:
+      - `node extract_ver.js --port 9222 --timeout 25000`
+      - 成功抓到:
+        - `ver = "yacvPNkHbOPdHJGCxibCUnXbqZM6JrA0AUpc39c5d0c="`
+        - `ajt = "0,0"`
+        - `ffl = "J3aE8rSc6GQSLfJO"`
+        - `akamaiScriptUrl = "https://www.dhl.com/lUuI09H8kk2lCTn_ihnlZXLM/J3aE8rSc6GQSLfJO/ZHE1PQ/dlZdB/nwEPFIB"`
+  - 后续可选:
+    - 继续追 `bO()[Dl(I49)](dz, IF, vg)` 的字符串表来源，做成自动提取而不是更新当前值
+
+- [x] **`ffl`** — 已确认并落地到还原脚本 (2026-03-31)
+  - 2026-03-31 动态确认:
+    - Akamai script URL: `https://www.dhl.com/lUuI09H8kk2lCTn_ihnlZXLM/J3aE8rSc6GQSLfJO/ZHE1PQ/dlZdB/nwEPFIB`
+    - 实际 `ffl = "J3aE8rSc6GQSLfJO"`
+    - 对应 URL 第 2 段（0-based segment[1]）
+  - 2026-03-31 静态补充: `z3W` 初始为空串，随后在 live.js:8881 从活动脚本 URL / src 的 `split()` 结果中取段
+  - 当前 bundle URL 证据:
+    - GET script: `https://www.dhl.com/lUuI09H8kk2lCTn_ihnlZXLM/J3aE8rSc6GQSLfJO/ZHE1PQ/dlZdB/nwEPFIB`
+    - POST sensor: `reqid=307` 同一路径
+  - 已落地: `screen_node_xag_live.js -> buildFflLive()`
+
+- [x] **`pIN()/BGH()` input 元素采集** ✅ → `screen_node_xag_live.js`
+  - `buildFfsLive()` 遍历 `document.querySelectorAll("input")`
+  - 过滤: 跳过 `id === "c-tracking--input"` 的元素
+  - 每个 input 输出 7 字段 tuple: `typeCode,autocompleteCode,hasDefaultDelta,requiredFlag,xq(id),xq(name),hasValue;`
+
+- [x] **`cb4()/qSH()` 剩余标志位 — 全部解明** ✅ → `screen_node_xag_live.js`
+  - `pha`/`wdr`/`dau`/`tsd`/`ibr`/`xag` 全部还原
+
+---
+
+## 未完成
+
+### P0 — 加密管线剩余
 
 - [ ] **`wx()/k3()` 校验码 — dvc 字段**
   - 4 个参数: 时间差、hash、计数器、事件数据
@@ -350,116 +510,7 @@
 
 **完全没有生成逻辑，纯透传 opts ❌**
 
-- [x] **`ver`** — 已定位到当前 bundle 的初始化解码链 (2026-03-31)
-  - **每次 bundle 更新都会变**
-  - 2026-03-31 当前 paused-frame live 值: `y5rI+vtIYAZJrvGePz3kUram5oCNR/QVus0LswZEZeM=`
-  - 2026-03-31 同一路径后续轮换 bundle 的新值: `yacvPNkHbOPdHJGCxibCUnXbqZM6JrA0AUpc39c5d0c=`
-  - 2026-03-31 当前再后续轮换 bundle 的新值: `nvhrNrCoFGIbD/ukOAYB2m53Jy/bCtQW3jFLi/OeRmQ=`
-  - 2026-03-31 较早一次 hook 还抓到过旧值: `ubAhg4nzYgG/X9FbSuJd5myzi9xbP3+e6E5ZbEaQwAU=`
-    - 说明它确实是随 bundle/版本切换的字段；即使脚本 URL 路径不变，内容轮换后 `ver` 也会变化，不能继续保留旧硬编码
-  - 2026-03-31 动态/静态证据链:
-    - `l2X` 中 payload 主体通过 `lr9 = x5(R3, [key1, val1, key2, val2, ...])` 构造
-    - 暂停帧直接求值可得第 1 组 pair 为: `"ver" -> vF9`
-    - 当前 bundle `current_live_bundle_20260331c.js` 中只有 1 处定义:
-      `var vF9 = MO()[Bg(kO)](...)[MO()[Bg(Zh)](...)](bO()[Dl(I49)](...))`
-    - 暂停帧拆表达式结果:
-      - 左值 `MO()[Bg(kO)](...) = ""`
-      - 方法名 `MO()[Bg(Zh)](...) = "concat"`
-      - 右值 `bO()[Dl(I49)](...) = "y5rI+vtIYAZJrvGePz3kUram5oCNR/QVus0LswZEZeM="`
-      - 因此 `vF9 === ""["concat"](decoded_string)`
-    - 继续下钻当前 bundle 可见:
-      - `Dl(I49) = "ON"`，即 `bO()[Dl(I49)] === bO().ON`
-      - 当前缓存后的 getter 形态是 `function(){return A0;}`
-      - 初始化代码模板来自 `case U9`: `var A0 = LM(jK, G8, Ml); bO()[kC] = function(){ return A0; }`
-      - 即 `ver` 的 decoded string 进一步来自 `LM(480, 89, 96)` 这条 closure 缓存链
-    - 参与该表达式调用位点的入参是常量索引 `dz=480, IF=66, vg=96`，不是请求时动态数据
-    - 当前 bundle `current_live_bundle_20260331e.js` 再次确认结构不变，只是变量名和最终值轮换:
-      - 唯一赋值位点: `var kPf=Wq()[Cl(Fl)](rJf,fD,hV)[Pl(typeof Ls()[hd(rd)],kR([],[][[]]))?Ls()[hd(FR)](vC(vC(Vd)),lAf,z2,Oj):Ls()[hd(gH)].apply(null,[vC(Vd),WN,Gs,m0])](Ls()[hd(Sx)](VU,dE,YKh,KV));`
-      - 在该断点处逐项求值:
-        - 左值 `Wq()[Cl(Fl)](rJf,fD,hV) = ""`
-        - 方法名分支结果 = `"concat"`
-        - 右值 `Ls()[hd(Sx)](VU,dE,YKh,KV) = "nvhrNrCoFGIbD/ukOAYB2m53Jy/bCtQW3jFLi/OeRmQ="`
-      - 因此当前 e 版仍然满足 `kPf === ""["concat"](decoded_string)`，只是 decoded string 已换新值
-    - 当前 bundle `current_live_bundle_20260331f.js` 再继续轮换后，decoded string 的上游模板也进一步钉到初始化解码器:
-      - 现场单步从 `var kPf=...` 进入后，命中 `var px=function Qj9(Un9,NC9){...}`
-      - `Qj9` 的 `case mX` 明确是“批量注册 getter 并缓存”的模板：
-        `zb()[qn9[fU9]] = ...`
-        `var AA9 = zT9(fj(fj(xw)), vm9, Qn9);`
-        `zb()[qJ9] = function(){ return AA9; };`
-      - `case L2` 可见 `qn9 = NC9[0]`，随后 `fU9 = 0`
-      - `kw/Phr` 的 `case H0` 明确调用 `px(L2, [G29()])`
-      - 因此当前 f 版可以确认：
-        - getter 键名数组来源是 `G29()`
-        - `decoded_string` 的真正上游已不是直接明文 getter，而是 `Qj9(case mX) -> zT9(...) -> Of(ck, ...)` 这条初始化缓存链
-      - 这说明后续若要做纯静态 `extract_ver`，重点应该继续静态化 `zT9/Of(ck)`，而不是再追某个轮换后的局部变量名
-    - 当前 f 版继续下钻 `zT9` 后，新确认:
-      - `kw/Phr` 的 `case w0` 明确挂接:
-        `zT9 = function(SN9, fG9, B19) { return Of.apply(this, [ck, arguments]); }`
-      - 因此 `zT9` 只是转发壳，真正逻辑在 `Of/W09` 的 `case ck`
-      - `Of/W09` 定义形态:
-        `var Of = function W09(n59, nW9) { ... switch(n59) { ... case ck: { ... }}}`
-      - 当前 `case ck` 的静态上下文表明它不是请求时 hash，而是在已有对象/环境上做存在性检查后，返回某个对象方法结果:
-        - 入参对象是 `gc = YP[0]`
-        - 命中条件之一是某些 `WX[...]` / `gc[...]` 路径非空
-        - 返回语句形态是 `WX[...][...](gc)`
-      - 这进一步说明 `decoded_string` 的生成依赖 bundle 初始化期的对象图和缓存表，不是单纯的源码明文或脚本 URL 派生值
-    - 当前 f 版继续把 `case ck` 的索引层拆开后，又拿到一组更细的静态证据:
-      - 基础数值链来自同一个初始化 switch:
-        - `xw=1`
-        - `c5=2`
-        - `R8=3`
-        - `WH=4`
-        - `jn=5`
-        - `xJ=7`
-        - `sW=6`
-        - `Np=9`
-        - `hS=10`
-        - `hC=8`
-      - 因而 `case ck` 里几个关键索引可以直接静态算出:
-        - `np = xJ - Np + c5 * hC = 14` -> `Cw(np) = "rU"`
-        - `W6 = R8 - xJ * xw + Np * WH = 32` -> `SD(W6) = "DN"`
-        - `dA = xw * hS + c5 * jn - hC = 12` -> `Nn(dA) = "rk"`
-        - `nj = Np * WH - hC - xJ + hS = 31` -> `SD(nj) = "Pt"`
-        - `TC = WH + jn - R8 + hS * sW = 66` -> `Nn(TC) = "mU"`
-        - `Gn = sW + Np + hC - WH = 19` -> `Cw(Gn) = "U4"`
-      - 结合当前页面主世界直接求值，又拿到这些 getter 的运行时形态:
-        - `V5()[Cw(np)]` 的当前形态是缓存 getter: `function(){return hB;}`
-        - `jj()[SD(W6)]` 的当前形态是缓存 getter: `function(){return ll9;}`
-        - `zb()[Nn(dA)]` 的当前形态是缓存 getter: `function(){return AA9;}`
-        - `zb()[Nn(TC)]` 的当前形态仍是未缓存 wrapper:
-          `function(VU9, vm9, Qn9) { var AA9 = zT9(fj(fj(xw)), vm9, Qn9); zb()[qJ9] = function(){ return AA9; }; return AA9; }`
-        - `zb()[Nn(nj)]` 的当前形态是缓存 getter: `function(){return AA9;}`
-      - 同一轮主世界试读时，曾成功拿到一组返回值样本:
-        - `V5()[Cw(np)]() -> "Symbol"`
-        - `jj()[SD(W6)]() -> "iterator"`
-        - `zb()[Nn(dA)]() -> "Array"`
-        - `zb()[Nn(nj)]() -> "login"`
-      - 但重复直接调用 getter 会再次落回 `Qj9`/初始化链，说明这组 getter 的状态与当前时序强相关，不能把一次试读值直接当作最终稳定语义；后续仍应以 `case ck` 命中时的暂停帧为准
-      - 已把这一层静态提取固化进 `extract_ver_static.js`
-        - 作用: 从保存下来的 bundle 中直接提取 `G29` 表、基础数值链、`case ck` 的索引和值名映射
-        - 2026-03-31 对 `current_live_bundle_20260331f.js` 实跑:
-          - `baseValues = {xw:1,c5:2,R8:3,WH:4,jn:5,xJ:7,sW:6,Np:9,hS:10,wn:0,gW:33,hC:8,I3:128}`
-          - `caseCkIndexes = {np:14,W6:32,dA:12,nj:31,TC:66,Gn:19}`
-          - `caseCkKeys = {np:"rU",W6:"DN",dA:"rk",nj:"Pt",TC:"mU",Gn:"U4"}`
-        - 这说明 `Of(ck)` 的索引层已经可以纯静态自动化，下一步只剩把 `case ck` 里这些 key 对应的 getter/返回值链继续静态化
-  - 排除项:
-    - 不是当前 Akamai script URL 的 SHA256(base64)
-    - 不是当前保存 bundle 文件 `current_live_bundle_20260331b.js` 的 SHA256(base64) (`3tpODgMar1IMH6V+Xy/8c3ZdVjE6htRj+ehUIz94sE8=`)
-    - 在线源码中搜不到最终明文值，说明它不是明文内嵌，而是运行时解码出的 bundle 常量
-  - 已落地:
-    - `screen_node_xag_live.js -> buildVerLive()` 已取消旧硬编码，改为必须外部提供
-    - `extract_ver.js` 新增：用于抓取当前 live 运行时 `ver`，避免继续手填过期值
-    - 2026-03-31 实跑验证:
-      - `node extract_ver.js --port 9222 --timeout 25000`
-      - 成功抓到:
-        - `ver = "yacvPNkHbOPdHJGCxibCUnXbqZM6JrA0AUpc39c5d0c="`
-        - `ajt = "0,0"`
-        - `ffl = "J3aE8rSc6GQSLfJO"`
-        - `akamaiScriptUrl = "https://www.dhl.com/lUuI09H8kk2lCTn_ihnlZXLM/J3aE8rSc6GQSLfJO/ZHE1PQ/dlZdB/nwEPFIB"`
-  - 后续可选:
-    - 继续追 `bO()[Dl(I49)](dz, IF, vg)` 的字符串表来源，做成自动提取而不是更新当前值
-
-- [ ] **`ajt`** — 硬编码 `"10,1"` 或 `"0,0"`
+- [ ] **`ajt`** — 硬编码 `”10,1”` 或 `”0,0”`
   - 2026-03-31 静态补充: `cKW = LPW + "," + v3W`，不是固定字面量
   - `LPW` 由多条交互/状态分支改写（如 `U1W/RzW/vpW/sW0` 等），`v3W` 在 `UAW()/fcW()` 通过后累加
   - 当前 no-interaction live 样本仍为 `"0,0"`
@@ -469,17 +520,6 @@
   - 2026-03-31 当前 no-interaction live 捕获: `inf === ffs`
   - live 实测 `inf` 在有 focus 事件时可能 ≠ `ffs`
   - 需要: 确认 `inf` 在无交互/有交互路径下的区别
-
-- [x] **`ffl`** — 已确认并落地到还原脚本 (2026-03-31)
-  - 2026-03-31 动态确认:
-    - Akamai script URL: `https://www.dhl.com/lUuI09H8kk2lCTn_ihnlZXLM/J3aE8rSc6GQSLfJO/ZHE1PQ/dlZdB/nwEPFIB`
-    - 实际 `ffl = "J3aE8rSc6GQSLfJO"`
-    - 对应 URL 第 2 段（0-based segment[1]）
-  - 2026-03-31 静态补充: `z3W` 初始为空串，随后在 live.js:8881 从活动脚本 URL / src 的 `split()` 结果中取段
-  - 当前 bundle URL 证据:
-    - GET script: `https://www.dhl.com/lUuI09H8kk2lCTn_ihnlZXLM/J3aE8rSc6GQSLfJO/ZHE1PQ/dlZdB/nwEPFIB`
-    - POST sensor: `reqid=307` 同一路径
-  - 已落地: `screen_node_xag_live.js -> buildFflLive()`
 
 - [ ] **`sws`** — 透传，默认 0
   - 2026-03-31 静态补充:
@@ -500,91 +540,95 @@
   - 有交互时: **完全没有生成逻辑**
   - 需要: 还原 `vRW()` → `z7W()` 事件数据格式化管线
 
-#### `buildMstLive()` 30 子字段审计
+#### `buildMstLive()` 子字段审计
 
-**有完整逻辑 ✅**
+> ⚠️ **整体状态**: 变量映射和公式已在 headless 环境中识别，但：
+> 1. **未在 Windows 真实浏览器上验证** — headless 下部分值（如 `ww8=0`, `ssts≠delt+1`）可能是环境差异导致
+> 2. **代码中大量字段仍为 opts 透传或硬编码默认值** — 没有经过函数构建，直接传入什么就输出什么
+> 3. 已识别的公式（如 `kevl = var | 1`, `devl = parseInt(doe.split(",")[1])`）**未落地到 `buildMstLive()` 代码中**
 
-| 字段 | 说明 |
-|------|------|
-| `it` | 固定 0（当前路径） |
-| `dd2` | `computeMstDd2Live()` = `parseInt(parseInt(sts/(2016*2016),10)/23,10)` |
-| `ww8` | `computeMstWw8Live()` = 当前路径固定 0 |
-| `tst` | `= tovl` |
-| `nfas` | 固定 `30261689`（bundle 常量） |
-| `jsrf` | 固定 `"PiZtE"` |
+**有完整逻辑且已落地 ✅**
 
-**有框架但输入来源未还原 ⚠️**
+| 字段 | 说明 | Windows 验证 |
+|------|------|-------------|
+| `it` | 固定 0（当前路径） | 未验证 |
+| `dd2` | `computeMstDd2Live()` = `parseInt(parseInt(sts/(2016*2016),10)/23,10)` | 未验证 |
+| `ww8` | `computeMstWw8Live()` = 当前路径固定 0 | 未验证，headless 下始终为 0，有交互时应为 `parseInt(dd2/6, 10)` |
+| `tst` | `= tovl` | 未验证 |
+| `nfas` | 固定 `30261689`（bundle 常量） | 未验证 |
+| `jsrf` | 固定 `"PiZtE"` | 未验证 |
+
+**公式已识别但未落地到代码 ⚠️ (仍从 opts 透传)**
 
 - [ ] **`kevl`/`mevl`/`tevl`** — 有 `| 1`/`| 32` 位运算，但输入值从 opts 透传
-  - 实际事件位掩码的累加逻辑未还原
-  - 需要: 追踪 live 中 `C2K`/`qPK`/`sDK` 的写入点
+  - 已知公式: `kevl = C2K | 1`, `mevl = qPK | 32`, `tevl = sDK | 32`
+  - 代码现状: `buildMstLive()` 中只做 `opts.kevl | 1`，没有累加逻辑
+  - 需要: 追踪 live 中 `C2K`/`qPK`/`sDK` 的写入点，在 Windows 真实浏览器验证
 
 - [ ] **`devl`/`dmvl`/`pevl`/`tovl`** — 依赖 `buildMstEventStateLive()`
-  - 该函数只是包装 opts，**没有从 `doe`/`dme` 字符串中解析第 2 字段的逻辑**
-  - 需要: `devl = parseInt(doe.split(",")[1])` 等解析逻辑
+  - 已知公式: `devl = parseInt(doe.split(",")[1])`, `dmvl = parseInt(dme.split(",")[1])`, `tovl = devl + dmvl`
+  - 代码现状: 函数只是包装 opts，**公式未落地**
+  - 需要: 落地解析逻辑，在 Windows 真实浏览器验证 doe/dme 字符串格式
 
 - [ ] **`delt`** — 依赖 `mstEventState.delt`，从 opts 透传
-  - 实际 = `Date.now() - bmak.startTs`，在调用时计算
-  - 需要: 在生成器入口自动计算
+  - 已知公式: `delt = Date.now() - bmak.startTs`
+  - 代码现状: 纯透传，没有自动计算
+  - 需要: 在生成器入口自动计算，Windows 验证时间差范围
 
 - [ ] **`sts`** — `startTimestamp` 纯透传
   - **`UMN()/bRH()` startTs 变换逻辑未还原**
-  - 需要: 完整还原 `Math.random` + `Math.floor` 算法
+  - 需要: 完整还原 `Math.random` + `Math.floor` 算法，Windows 验证
 
 - [ ] **`fct`** — `fpState.td` 透传
-  - = 指纹计算耗时 (ms)
-  - 需要: 在 `getBrowserFingerprint()` 调用时测量 `Date.now()` 差值
+  - 已知含义: 指纹计算耗时 (ms)
+  - 代码现状: 纯透传，没有测量逻辑
+  - 需要: 在 `getBrowserFingerprint()` 调用时测量 `Date.now()` 差值，Windows 验证典型耗时范围
 
-- [ ] **`ssts`** — fallback `delt+1`，但 live 显示不等于 `delt+1`
-  - 实际计算逻辑未确认
-  - 需要: 运行时断点确认 `hsK` 的真实赋值
+- [ ] **`ssts`** — fallback `delt+1`，但 headless live 显示不等于 `delt+1`
+  - headless 样本: delt=15→ssts=23, delt=8→ssts=11, delt=5→ssts=7（差值不固定）
+  - 代码现状: 硬编码 `delt+1`
+  - 需要: 运行时断点确认 `hsK` 的真实赋值，**Windows 真实浏览器对比验证**
 
 - [ ] **`rval`/`rcfp`** — 依赖 `fpState`，默认 `"-1"`
+  - 代码现状: 硬编码默认值透传
   - 来源未还原，可能与 canvas/webgl 指纹相关
-  - 需要: 追踪 `fpState.rVal`/`fpState.rCFP` 的写入
+  - 需要: 追踪 `fpState.rVal`/`fpState.rCFP` 的写入，Windows 验证
 
-**完全未还原 ❌**
+**完全未还原，代码中为硬编码/透传默认值 ❌**
 
 - [ ] **`kc`/`mc`/`pc`/`tc`** — 事件计数器，纯透传默认 0
   - kc=键盘计数, mc=鼠标计数, pc=指针计数, tc=触摸计数
-  - 无交互时 = 0: ✅ 正确
+  - 无交互时 = 0: ✅ 正确（headless 验证）
   - 有交互时: 计数逻辑未还原
+  - 需要: Windows 真实浏览器验证有交互时的计数值
 
 - [ ] **`jsrf1`/`jsrf2`** — 纯透传 null
   - 脚本完整性值，**每次请求都不同**
-  - live 样本: `60246/82`, `83573/41`, `30944/54`
-  - 需要: 完整还原计算逻辑（可能是对 bundle 自身做 hash/checksum）
+  - headless 样本: `60246/82`, `83573/41`, `30944/54`
+  - 需要: 完整还原计算逻辑（可能是对 bundle 自身做 hash/checksum），Windows 验证
 
 - [ ] **`signals`** — 透传默认 `"0"`
-  - 信号位，含义和计算未还原
+  - 信号位，含义和计算未还原，需 Windows 验证实际值
 
 - [ ] **`mwd`** — 透传默认 `"0"`
-  - 含义和计算未还原
+  - 含义和计算未还原，需 Windows 验证实际值
 
 - [ ] **`hea`** — 透传默认 `""`
-  - 含义和计算未还原
+  - 含义和计算未还原，需 Windows 验证实际值
 
 - [ ] **`dvc`** — `computeMstDvcLive()` 只做 3 段拼接
   - `hash` = `SY(delt, ajr, fct, tovl)` → **核心 hash 算法完全未还原**
   - `delta` = `lkK() - AnK` (小时间差) → 透传
   - `plugins` = `"h+j+d+c+b+e+g+f+i+a+l+"` → 硬编码，插件枚举逻辑未还原
-  - 需要: P0 优先还原 `SY()` 函数
+  - 需要: P0 优先还原 `SY()` 函数，Windows 验证 hash 输出
 
 - [ ] **`srd`** — 透传默认 `"0"`
-  - 含义未知
+  - 含义未知，需 Windows 验证
 
 - [ ] **`tid`** — 透传默认 `""`
-  - 含义未知
+  - 含义未知，需 Windows 验证
 
 ### P1.5 — 数据组装（已有条目保留）
-
-- [x] **`pIN()/BGH()` input 元素采集** ✅ → `screen_node_xag_live.js`
-  - `buildFfsLive()` 遍历 `document.querySelectorAll("input")`
-  - 过滤: 跳过 `id === "c-tracking--input"` 的元素
-  - 每个 input 输出 7 字段 tuple: `typeCode,autocompleteCode,hasDefaultDelta,requiredFlag,xq(id),xq(name),hasValue;`
-
-- [x] **`cb4()/qSH()` 剩余标志位 — 全部解明** ✅ → `screen_node_xag_live.js`
-  - `pha`/`wdr`/`dau`/`tsd`/`ibr`/`xag` 全部还原
 
 - [ ] **`w3N()/S7Y()/cmH()` sensor_data 头部生成**
   - 已知 header 格式: `"3;0;1;0;{timestamp_diff};{sha256};{counts}"`
