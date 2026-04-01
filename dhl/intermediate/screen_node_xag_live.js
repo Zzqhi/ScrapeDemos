@@ -14,6 +14,10 @@
 //   Ejf() builds the browser fingerprint array and includes:
 //     Wr(Lv, ["xag", Epf(FA, [])])
 
+// ═══════════════════════════════════════════════════════════════════════
+// §1  Utilities
+// ═══════════════════════════════════════════════════════════════════════
+
 function xq(str) {
     if (str == null) return -1;
 
@@ -41,6 +45,10 @@ function shuffleFingerprint(arr, seed) {
 
     return arr;
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// §2  Encryption / Permutation  (AhN + czG)
+// ═══════════════════════════════════════════════════════════════════════
 
 // AhN character permutation — runtime-verified 2026-03-26
 //
@@ -118,6 +126,81 @@ function ahnUnpermute(permuted, seed) {
 
     return parts.join(SEPARATOR);
 }
+
+function czG_live(input, seed) {
+    var charset = " !#$%&()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_`abcdefghijklmnopqrstuvwxyz{|}~";
+    var lookup = [];
+    var output = "";
+
+    for (var i = 0; i < 127; i++) {
+        if (i === 32 || i === 34 || i === 39 || i === 92) {
+            lookup[i] = -1;
+        } else {
+            lookup[i] = charset.indexOf(String.fromCharCode(i));
+        }
+    }
+
+    for (var j = 0; j < input.length; j++) {
+        var ch = input.charAt(j);
+        var shift = ((seed >> 8) & 65535) % charset.length;
+
+        seed = (seed * 65793) & 0xffffffff;
+        seed = (seed + 4282663) & 8388607;
+
+        var mappedIndex = lookup[input.charCodeAt(j)];
+        if (mappedIndex >= 0) {
+            ch = charset[(mappedIndex + shift) % charset.length];
+        }
+
+        output += ch;
+    }
+
+    return output;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// §3  Seed Extraction  (bm_sz cookie + bundle constant)
+// ═══════════════════════════════════════════════════════════════════════
+
+// seeds[1] is a per-bundle constant embedded in the AI object.
+// Use extract_seed1.js (AST-based) to extract it from a fresh bundle.
+// Current live bundle validation on 2026-03-31:
+//   node extract_seed1.js current_live_bundle_20260331c.js -> 2102249
+//   runtime Jd9() -> [3425335, 2102249]
+function H4G_live() {
+    var defaultSeed1 = 8888888;
+    var seed2 = 2102249;  // ← extract via: node extract_seed1.js <bundle.js>
+
+    try {
+        var cookies = String(document.cookie || "").split("; ");
+        var raw = null;
+
+        for (var i = 0; i < cookies.length; i++) {
+            var entry = cookies[i];
+
+            if (entry.indexOf("bm_sz_") === 0) {
+                raw = entry.slice(entry.indexOf("=") + 1);
+            } else if (raw == null && entry.indexOf("bm_sz=") === 0) {
+                raw = entry.slice("bm_sz=".length);
+            }
+        }
+
+        if (!raw) {
+            return [defaultSeed1, seed2];
+        }
+
+        var parts = String(raw).split("~");
+        var seed1 = parseInt(parts[2], 10);
+
+        return [Number.isNaN(seed1) ? defaultSeed1 : seed1, seed2];
+    } catch (e) {
+        return [defaultSeed1, seed2];
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// §4  Browser Feature / Bot Detection Probes
+// ═══════════════════════════════════════════════════════════════════════
 
 function BX4_S9_live() {
     var checks = [
@@ -232,605 +315,9 @@ function getIbrLive() {
     return 0;
 }
 
-// seeds[1] is a per-bundle constant embedded in the AI object.
-// Use extract_seed1.js (AST-based) to extract it from a fresh bundle.
-// Current live bundle validation on 2026-03-31:
-//   node extract_seed1.js current_live_bundle_20260331c.js -> 2102249
-//   runtime Jd9() -> [3425335, 2102249]
-function H4G_live() {
-    var defaultSeed1 = 8888888;
-    var seed2 = 2102249;  // ← extract via: node extract_seed1.js <bundle.js>
-
-    try {
-        var cookies = String(document.cookie || "").split("; ");
-        var raw = null;
-
-        for (var i = 0; i < cookies.length; i++) {
-            var entry = cookies[i];
-
-            if (entry.indexOf("bm_sz_") === 0) {
-                raw = entry.slice(entry.indexOf("=") + 1);
-            } else if (raw == null && entry.indexOf("bm_sz=") === 0) {
-                raw = entry.slice("bm_sz=".length);
-            }
-        }
-
-        if (!raw) {
-            return [defaultSeed1, seed2];
-        }
-
-        var parts = String(raw).split("~");
-        var seed1 = parseInt(parts[2], 10);
-
-        return [Number.isNaN(seed1) ? defaultSeed1 : seed1, seed2];
-    } catch (e) {
-        return [defaultSeed1, seed2];
-    }
-}
-
-function czG_live(input, seed) {
-    var charset = " !#$%&()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_`abcdefghijklmnopqrstuvwxyz{|}~";
-    var lookup = [];
-    var output = "";
-
-    for (var i = 0; i < 127; i++) {
-        if (i === 32 || i === 34 || i === 39 || i === 92) {
-            lookup[i] = -1;
-        } else {
-            lookup[i] = charset.indexOf(String.fromCharCode(i));
-        }
-    }
-
-    for (var j = 0; j < input.length; j++) {
-        var ch = input.charAt(j);
-        var shift = ((seed >> 8) & 65535) % charset.length;
-
-        seed = (seed * 65793) & 0xffffffff;
-        seed = (seed + 4282663) & 8388607;
-
-        var mappedIndex = lookup[input.charCodeAt(j)];
-        if (mappedIndex >= 0) {
-            ch = charset[(mappedIndex + shift) % charset.length];
-        }
-
-        output += ch;
-    }
-
-    return output;
-}
-
-function buildAjrLive(userAgent, startTimestamp) {
-    // Runtime-verified via Proxy on P9G()(payload):
-    // the live code accesses payload.startTimestamp.
-    //
-    // On the current bundle/path, that field is presently undefined, so the
-    // second half is sha256("undefined"). Earlier bundle versions passed an
-    // actual timestamp here.
-    return sha256Hex(userAgent) + sha256Hex(String(startTimestamp));
-}
-
-function getFfsTypeCodeLive(type) {
-    var textLike = ["text", "search", "url", "email", "tel", "number"];
-    var normalized = String(type).toLowerCase();
-
-    if (textLike.indexOf(normalized) !== -1) return 0;
-    if (normalized === "password") return 1;
-    return 2;
-}
-
-function getFfsAutocompleteCodeLive(autocomplete) {
-    if (autocomplete == null) return -1;
-
-    var normalized = String(autocomplete).toLowerCase();
-    if (normalized === "off") return 0;
-    if (normalized === "on") return 1;
-    return 2;
-}
-
-function shouldIncludeFfsInputLive(input) {
-    return input && input.id !== "c-tracking--input";
-}
-
-function normalizeFfsInputLive(input) {
-    if (!input) return null;
-
-    var typeCode = input.type == null ? -1 : getFfsTypeCodeLive(input.type);
-    if (typeCode === -1) return null;
-
-    var autocompleteCode = getFfsAutocompleteCodeLive(input.autocomplete);
-    var value = input.value == null ? "" : String(input.value);
-    var defaultValue = input.defaultValue == null ? "" : String(input.defaultValue);
-    var hasValue = value.length !== 0 ? 1 : 0;
-    var hasDefaultDelta = defaultValue.length !== 0 && (hasValue === 1 || defaultValue !== value) ? 1 : 0;
-
-    // qbb_node.js has the right tuple structure, but browser validation shows
-    // the 4th field tracks the boolean required state rather than `!= null`.
-    var requiredFlag = input.required ? 1 : 0;
-
-    return [
-        typeCode,
-        autocompleteCode,
-        hasDefaultDelta,
-        requiredFlag,
-        xq(input.id),
-        xq(input.name),
-        hasValue
-    ].join(",") + ";";
-}
-
-function buildFfsLive(inputs) {
-    var source = inputs;
-
-    if (!source) {
-        if (typeof document === "undefined" || typeof document.querySelectorAll !== "function") {
-            return "";
-        }
-        source = document.querySelectorAll("input");
-    }
-
-    var result = "";
-    for (var i = 0; i < source.length; i++) {
-        var input = source[i];
-        if (!shouldIncludeFfsInputLive(input)) continue;
-
-        var tuple = normalizeFfsInputLive(input);
-        if (tuple != null) result += tuple;
-    }
-
-    return result;
-}
-
-function buildFpcLive(fpValStr) {
-    return String(xq(fpValStr));
-}
-
-function buildMstEventStateLive(options) {
-    var opts = options || {};
-
-    var devl = opts.devl == null ? 0 : opts.devl;
-    var dmvl = opts.dmvl == null ? 0 : opts.dmvl;
-    var pevl = opts.pevl == null ? 0 : opts.pevl;
-    var delt = opts.delt == null ? null : opts.delt;
-    var it = opts.it == null ? 0 : opts.it;
-
-    // Runtime-confirmed relationships:
-    //   devl -> document-event aggregate primary count
-    //   dmvl -> device/mouse-event aggregate primary count
-    //   tovl -> devl + dmvl
-    //   delt -> Date.now() - bmak.startTs
-    //   it   -> NhH (current path usually 0, semantics still pending)
-    return {
-        devl: devl,
-        dmvl: dmvl,
-        pevl: pevl,
-        tovl: opts.tovl == null ? devl + dmvl : opts.tovl,
-        delt: delt,
-        it: it
-    };
-}
-
-function computeMstDd2Live(startTs) {
-    if (startTs == null) return null;
-    return parseInt(parseInt(startTs / (2016 * 2016), 10) / 23, 10);
-}
-
-function computeMstWw8Live(dd2, options) {
-    var opts = options || {};
-
-    // Older runtime notes suggested ww8 might derive from dd2 / 6.
-    // Current live payload captures on 2026-03-30 consistently emit ww8 = 0
-    // on the no-interaction DHL tracking path, even when dd2 is non-zero.
-    //
-    // Keep the legacy derivation behind an explicit opt-in so we do not
-    // overwrite live evidence with an outdated assumption.
-    if (opts.useLegacyFormula) {
-        if (dd2 == null) return 0;
-        return parseInt(dd2 / 6, 10);
-    }
-
-    return 0;
-}
-
-function computeMstDvcLive(options) {
-    var opts = options || {};
-    var hash = opts.hash;
-    var delta = opts.delta;
-    var plugins = opts.plugins;
-
-    if (hash == null && opts.parts) hash = opts.parts[0];
-    if (delta == null && opts.parts) delta = opts.parts[1];
-    if (plugins == null && opts.parts) plugins = opts.parts[2];
-
-    if (hash == null && delta == null && plugins == null) {
-        return "";
-    }
-
-    return [
-        hash == null ? "" : String(hash),
-        delta == null ? "" : String(delta),
-        plugins == null ? "" : String(plugins)
-    ].join(",");
-}
-
-function buildMstLive(options) {
-    var opts = options || {};
-    var fpState = opts.fpState || {};
-    var mstEventState = buildMstEventStateLive(opts.mstEventState);
-    var startTs = opts.startTimestamp == null ? null : opts.startTimestamp;
-    var dd2 = computeMstDd2Live(startTs);
-    var dvc = opts.dvc;
-
-    if (dvc == null) {
-        dvc = computeMstDvcLive({
-            hash: opts.dvcHash,
-            delta: opts.dvcDelta,
-            plugins: opts.dvcPlugins,
-            parts: opts.dvcParts
-        });
-    }
-
-    return opts.mst || [
-        { kevl: (opts.kevl || 0) | 1 },
-        { mevl: (opts.mevl || 0) | 32 },
-        { tevl: (opts.tevl || 0) | 32 },
-        { devl: mstEventState.devl },
-        { dmvl: mstEventState.dmvl },
-        { pevl: mstEventState.pevl },
-        { tovl: mstEventState.tovl },
-        { delt: mstEventState.delt },
-        { it: mstEventState.it },
-        { sts: startTs },
-        { fct: opts.fct == null ? (fpState.td == null ? null : fpState.td) : opts.fct },
-        { dd2: dd2 },
-        { kc: opts.kc == null ? 0 : opts.kc },
-        { mc: opts.mc == null ? 0 : opts.mc },
-        { ww8: opts.ww8 == null ? computeMstWw8Live(dd2, opts) : opts.ww8 },
-        { pc: opts.pc == null ? 0 : opts.pc },
-        { tc: opts.tc == null ? 0 : opts.tc },
-        // Live captures show ssts is not simply delt + 1 on the current bundle.
-        // Leave it caller-controlled when available; otherwise keep the older
-        // fallback for backwards comparison.
-        { ssts: opts.ssts == null ? (mstEventState.delt == null ? null : mstEventState.delt + 1) : opts.ssts },
-        { tst: opts.tst == null ? mstEventState.tovl : opts.tst },
-        { rval: fpState.rVal || "-1" },
-        { rcfp: fpState.rCFP || "-1" },
-        { nfas: opts.nfas == null ? 30261689 : opts.nfas },
-        { jsrf: opts.jsrf == null ? "PiZtE" : opts.jsrf },
-        { jsrf1: opts.jsrf1 == null ? null : opts.jsrf1 },
-        { jsrf2: opts.jsrf2 == null ? null : opts.jsrf2 },
-        { signals: opts.signals == null ? "0" : String(opts.signals) },
-        { mwd: opts.mwd == null ? "0" : String(opts.mwd) },
-        { hea: opts.hea == null ? "" : String(opts.hea) },
-        { dvc: dvc },
-        { srd: opts.srd == null ? "0" : String(opts.srd) },
-        { tid: opts.tid == null ? "" : String(opts.tid) }
-    ];
-}
-
-function buildMstObjectMapLive(mst) {
-    var arr = mst || [];
-    var out = {};
-
-    for (var i = 0; i < arr.length; i++) {
-        var item = arr[i];
-        if (!item || typeof item !== "object") continue;
-
-        var keys = Object.keys(item);
-        if (keys.length !== 1) continue;
-
-        out[keys[0]] = item[keys[0]];
-    }
-
-    return out;
-}
-
-function buildAjtLive(options) {
-    var opts = options || {};
-    var lpw = opts.ajtState;
-    var counter = opts.ajtCount;
-
-    if (lpw == null && opts.LPW != null) lpw = opts.LPW;
-    if (counter == null && opts.v3W != null) counter = opts.v3W;
-
-    // Static trace in live.js:
-    //   cKW = LPW + "," + v3W
-    // LPW is a small state code written by multiple interaction branches,
-    // while v3W is incremented as those branches pass through UAW()/fcW().
-    // Current no-interaction live captures on 2026-03-31 show "0,0".
-    return [
-        lpw == null ? 0 : lpw,
-        counter == null ? 0 : counter
-    ].join(",");
-}
-
-function getAkamaiScriptUrlLive() {
-    if (typeof document === "undefined") return "";
-
-    var scripts = document.scripts || [];
-    for (var i = 0; i < scripts.length; i++) {
-        var src = scripts[i] && scripts[i].src;
-        if (!src) continue;
-        if (src.indexOf("/lUuI09H8") === -1) continue;
-        if (src.indexOf("/nwEPFIB") === -1) continue;
-        return src;
-    }
-
-    return "";
-}
-
-function buildFflLive(options) {
-    var opts = options || {};
-    var src = opts.akamaiScriptUrl || getAkamaiScriptUrlLive();
-    if (!src) return "";
-
-    try {
-        var url = new URL(src, typeof location !== "undefined" ? location.href : "https://www.dhl.com");
-        var parts = url.pathname.split("/").filter(Boolean);
-
-        // Runtime evidence on 2026-03-31:
-        //   script URL = /lUuI09H8kk2lCTn_ihnlZXLM/J3aE8rSc6GQSLfJO/ZHE1PQ/dlZdB/nwEPFIB
-        //   captured ffl = "J3aE8rSc6GQSLfJO"
-        // Therefore current bundle/path maps ffl to pathname segment[1].
-        return parts[1] || "";
-    } catch (e) {
-        return "";
-    }
-}
-
-function buildHlsLive(options) {
-    var opts = options || {};
-    if (Object.prototype.hasOwnProperty.call(opts, "hls")) {
-        return opts.hls;
-    }
-
-    // Runtime evidence on 2026-03-31 (current DHL no-interaction path) showed
-    // hls may stay undefined until serialization time, but keep the older
-    // static fallback here so the reconstruction emits a stable value unless
-    // the caller provides a bundle-specific override.
-    return "-1,,,1,";
-}
-
-function buildVerLive(options) {
-    var opts = options || {};
-    if (opts.ver) return opts.ver;
-
-    // `ver` rotates with the live bundle even when the script path stays the same.
-    // Static traces on 2026-03-31 confirmed it is a bundle-initialized decoded
-    // constant, not a request-time hash, so keeping an old hardcoded value here is
-    // actively misleading. Callers should inject a fresh value, e.g. from a helper
-    // such as `extract_ver.js`, before constructing the payload.
-    return "";
-}
-
-function build9013PayloadLive(options) {
-    var opts = options || {};
-    var locationHref = typeof location !== "undefined" ? location.href : "";
-    var fpState = opts.fpState || {};
-    var mstEventState = buildMstEventStateLive(opts.mstEventState);
-    var ffs = opts.ffs || buildFfsLive(opts.inputs);
-    var startTs = opts.startTimestamp == null ? null : opts.startTimestamp;
-
-    // mst field generation — runtime-traced 2026-03-30 (HmK function, gpK array)
-    //
-    // Variable mapping (live bundle → field):
-    //   C2K → kevl    qPK → mevl    sDK → tevl
-    //   mPK → devl    CTK → dmvl    vEK → pevl
-    //   FzK → tovl    GNK → delt    qrK → it
-    //   PEK → sts     HzK → fct     bLK → dd2
-    //   mEK → kc      OtK → mc      U2K → ww8
-    //   BDK → pc      qtK → tc      hsK → ssts
-    //   qCK → tst     htK → nfas    NrK → jsrf
-    //   VPK → jsrf1/jsrf2    n6K → signals
-    //   MrK+brK+j0K → dvc
-    //
-    // Field computation rules:
-    //   kevl = C2K | 1      (bitwise OR with default 1)
-    //   mevl = qPK | 32     (bitwise OR with default 32)
-    //   tevl = sDK | 32     (bitwise OR with default 32)
-    //   devl = second field of doe string (doc event timestamp delta)
-    //   dmvl = second field of dme string (device motion timestamp delta)
-    //   pevl = pointer event aggregate (0 on no-interaction path)
-    //   tovl = devl + dmvl
-    //   delt = Date.now() - bmak.startTs (captured at function entry)
-    //   it   = 0 on current path
-    //   sts  = bmak.startTs
-    //   fct  = fpState.td (fingerprint timing delta)
-    //   dd2  = parseInt(parseInt(startTs / (2016*2016), 10) / 23, 10)
-    //   ww8  = parseInt(dd2 / 6, 10)
-    //   ssts = delt + 1  (captured 1ms after delt)
-    //   tst  = tovl      (same value)
-    //   rval = fpState.rVal (default "-1")
-    //   rcfp = fpState.rCFP (default "-1")
-    //   nfas = 30261689  (dispatcher case 62, bundle constant)
-    //   jsrf = "PiZtE"   (fixed)
-    //   jsrf1/jsrf2 = VPK[0]/VPK[1] (script integrity values)
-    //   dvc  = MrK + "," + brK + "," + j0K
-    //          MrK = SY(delt, ajr, fct, tovl) — canvas/webgl fingerprint hash
-    //          brK = lkK() - AnK (small time delta, ~8ms)
-    //          j0K = plugin enumeration string (e.g. "j+k+d+l+i+e+g+h+c+a+")
-
-    var mst = buildMstLive({
-        mst: opts.mst,
-        mstEventState: mstEventState,
-        startTimestamp: startTs,
-        fpState: fpState,
-        fct: opts.fct,
-        kevl: opts.kevl,
-        mevl: opts.mevl,
-        tevl: opts.tevl,
-        kc: opts.kc,
-        mc: opts.mc,
-        pc: opts.pc,
-        tc: opts.tc,
-        ww8: opts.ww8,
-        ssts: opts.ssts,
-        tst: opts.tst,
-        nfas: opts.nfas,
-        jsrf: opts.jsrf,
-        jsrf1: opts.jsrf1,
-        jsrf2: opts.jsrf2,
-        signals: opts.signals,
-        mwd: opts.mwd,
-        hea: opts.hea,
-        dvc: opts.dvc,
-        dvcHash: opts.dvcHash,
-        dvcDelta: opts.dvcDelta,
-        dvcPlugins: opts.dvcPlugins,
-        dvcParts: opts.dvcParts,
-        srd: opts.srd,
-        tid: opts.tid
-    });
-
-    return {
-        ver: buildVerLive(opts),
-        fpt: opts.fpt || fpState.fpValStr || ";-1;dis;,7;true;true;true;-480;true;24;24;true;false;-1",
-        fpc: opts.fpc || buildFpcLive(opts.fpt || fpState.fpValStr || ";-1;dis;,7;true;true;true;-480;true;24;24;true;false;-1"),
-        ajr: opts.ajr || buildAjrLive(opts.userAgent || navigator.userAgent, opts.startTimestamp),
-        din: opts.din || (typeof window !== "undefined" ? getBrowserFingerprint() : []),
-        eem: opts.eem || "do_en,dm_en,t_en",
-        ffs: ffs,
-        vev: opts.vev || "",
-        inf: opts.inf || ffs,
-        ajt: opts.ajt || buildAjtLive(opts),
-        kev: opts.kev || "",
-        dme: opts.dme || "",
-        mev: opts.mev || "",
-        doe: opts.doe || "",
-        pur: opts.pur || locationHref,
-        pev: opts.pev || "",
-        mst: mst,
-        o9: opts.o9 == null ? 0 : opts.o9,
-        tev: opts.tev || "",
-        sde: opts.sde || "0,0,0,0,1,0,0",
-        // per: 20-char string, each digit = Permissions API query result
-        //   digits: 9=not_supported/error, 4=denied, 3=prompt, 2=granted
-        //   queries 20 permission names in fixed order (browser-dependent)
-        per: opts.per || buildPerLive(),
-        // dsi: 12-field array — DOM/script integrity checks
-        dsi: opts.dsi || buildDsiLive(),
-        // wsl: 20-field CSV — performance.memory + meta count + flags
-        //   [0]=jsHeapSizeLimit, [1]=totalJSHeapSize, [2]=usedJSHeapSize,
-        //   [3]=-1(AudioContext?), [4]=meta_tags_count,
-        //   [5-9]=capability_flags, [10-17]=empty(WebGL unavailable), [18-19]=flags
-        wsl: opts.wsl || buildWslLive(),
-        // hls: 5-field CSV / async probe result.
-        // Current no-interaction live path keeps the key enumerable but leaves
-        // the value undefined before JSON.stringify, so it is omitted from the
-        // serialized payload. Callers can still force a value via opts.hls.
-        hls: buildHlsLive(opts),
-        pde: opts.pde || "",
-        oev: opts.oev || "",
-        if: opts.ifField || "",
-        pus: opts.pus == null ? 0 : opts.pus,
-        // ffl: script identifier derived from the Akamai script URL path.
-        // Runtime capture on 2026-03-31:
-        //   URL  = /lUuI09H8kk2lCTn_ihnlZXLM/J3aE8rSc6GQSLfJO/ZHE1PQ/dlZdB/nwEPFIB
-        //   ffl  = "J3aE8rSc6GQSLfJO"
-        // so current bundle/path uses the second pathname segment.
-        ffl: opts.ffl || buildFflLive(opts),
-        // sww: Client Hints consistency check — each API sampled twice
-        //   odd=initial, even=re-check (anti-spoofing)
-        sww: opts.sww || buildSwwLive(),
-        te: opts.te == null ? 0 : opts.te,
-        nte: opts.nte == null ? 0 : opts.nte,
-        mte: opts.mte == null ? 0 : opts.mte,
-        tcd: opts.tcd || {},
-        pnte: opts.pnte == null ? 0 : opts.pnte,
-        pte: opts.pte == null ? 0 : opts.pte,
-        pmte: opts.pmte == null ? 0 : opts.pmte,
-        tab: opts.tab == null ? 0 : opts.tab,
-        // sws: service-worker state bit.
-        // Static trace:
-        //   payload emits `dDW ? 1 : 0`
-        //   dDW is seeded false on the current path, then flipped through the
-        //   M3W() branch that depends on serviceWorker-related capability checks.
-        sws: opts.sws == null ? 0 : opts.sws,
-        mis: opts.mis == null ? 0 : opts.mis,
-        og: opts.og || "sm"
-    };
-}
-
-// Encode pipeline — runtime-verified 2026-03-26
-//
-// Live bundle flow (bSs function):
-//   1. DzB = JSON.stringify(payload)
-//   2. DzB = BVB(29, [DzB, seeds[1]])   → ahnPermute (token shuffle on ":")
-//   3. DzB = nTB(DzB, seeds[0])          → czG encryption + header assembly
-//
-// seeds[0] = bm_sz cookie ~part[2]  (per-session, e.g. 3686709)
-// seeds[1] = bundle constant via AI  (per-bundle, e.g. 4257762)
-//
-// Previous implementation was wrong: used pair[1] for czG and skipped AhN.
-// Correct order: AhN with seeds[1], then czG with seeds[0].
-function encode9013PayloadLive(payload, seeds) {
-    var pair = seeds || H4G_live();
-    var json = JSON.stringify(payload);
-    var permuted = ahnPermute(json, pair[1]);
-    return czG_live(permuted, pair[0]);
-}
-
-function buildTimingSegmentLive(fields) {
-    var input = fields || {};
-
-    // test.js 9082-9092:
-    //   nNY = (Date.now() - startTsSnap)
-    //       + "," + j0H
-    //       + "," + E0Y
-    //       + "," + jgH
-    //       + "," + p0Y
-    //       + "," + k7Y
-    //       + "," + r3Y
-    //
-    // The concatenation order is runtime-accurate even though some individual
-    // field meanings are still named after their reverse-engineering aliases.
-    return [
-        input.elapsedSinceStart,
-        input.j0H,
-        input.E0Y,
-        input.jgH,
-        input.p0Y,
-        input.k7Y,
-        input.r3Y
-    ].join(",");
-}
-
-function concatSensorDataSegmentsLive(header, timingSegment, encryptedPayload) {
-    // test.js 9094:
-    //   SUH = MTY + ";" + nNY + ";" + SUH;
-    return String(header) + ";" + String(timingSegment) + ";" + String(encryptedPayload);
-}
-
-function buildSensorDataFromBrowserPayloadLive(options) {
-    var opts = options || {};
-    var payloadJson = opts.payloadJson;
-
-    if (payloadJson == null) {
-        if (opts.payload == null) {
-            throw new Error("buildSensorDataFromBrowserPayloadLive requires payloadJson or payload");
-        }
-        payloadJson = JSON.stringify(opts.payload);
-    }
-
-    var encryptedPayload = opts.encryptedPayload;
-    if (encryptedPayload == null) {
-        var pair = opts.seeds || H4G_live();
-        encryptedPayload = czG_live(payloadJson, pair[1]);
-    }
-
-    if (opts.header == null) {
-        throw new Error("buildSensorDataFromBrowserPayloadLive requires the exact browser header string");
-    }
-
-    var timingSegment = opts.timingSegment;
-    if (timingSegment == null) {
-        if (opts.timingFields == null) {
-            throw new Error("buildSensorDataFromBrowserPayloadLive requires timingSegment or timingFields");
-        }
-        timingSegment = buildTimingSegmentLive(opts.timingFields);
-    }
-
-    return concatSensorDataSegmentsLive(opts.header, timingSegment, encryptedPayload);
-}
+// ═══════════════════════════════════════════════════════════════════════
+// §5  Browser Fingerprint Assembly  (din field)
+// ═══════════════════════════════════════════════════════════════════════
 
 function getBrowserFingerprint() {
     var startTs = window.bmak && window.bmak.startTs ? window.bmak.startTs : Date.now();
@@ -933,6 +420,361 @@ function getBrowserFingerprint() {
 //       2. URf entry ["tsd", VRf]
 //     runtime and static inspection agree that tsd behaves like a fixed 0 on
 //     this bundle/path rather than a separately computed touch capability probe.
+
+// ═══════════════════════════════════════════════════════════════════════
+// §6  Form Fingerprint  (ffs / fpc fields)
+// ═══════════════════════════════════════════════════════════════════════
+
+function getFfsTypeCodeLive(type) {
+    var textLike = ["text", "search", "url", "email", "tel", "number"];
+    var normalized = String(type).toLowerCase();
+
+    if (textLike.indexOf(normalized) !== -1) return 0;
+    if (normalized === "password") return 1;
+    return 2;
+}
+
+function getFfsAutocompleteCodeLive(autocomplete) {
+    if (autocomplete == null) return -1;
+
+    var normalized = String(autocomplete).toLowerCase();
+    if (normalized === "off") return 0;
+    if (normalized === "on") return 1;
+    return 2;
+}
+
+function shouldIncludeFfsInputLive(input) {
+    return input && input.id !== "c-tracking--input";
+}
+
+function normalizeFfsInputLive(input) {
+    if (!input) return null;
+
+    var typeCode = input.type == null ? -1 : getFfsTypeCodeLive(input.type);
+    if (typeCode === -1) return null;
+
+    var autocompleteCode = getFfsAutocompleteCodeLive(input.autocomplete);
+    var value = input.value == null ? "" : String(input.value);
+    var defaultValue = input.defaultValue == null ? "" : String(input.defaultValue);
+    var hasValue = value.length !== 0 ? 1 : 0;
+    var hasDefaultDelta = defaultValue.length !== 0 && (hasValue === 1 || defaultValue !== value) ? 1 : 0;
+
+    // qbb_node.js has the right tuple structure, but browser validation shows
+    // the 4th field tracks the boolean required state rather than `!= null`.
+    var requiredFlag = input.required ? 1 : 0;
+
+    return [
+        typeCode,
+        autocompleteCode,
+        hasDefaultDelta,
+        requiredFlag,
+        xq(input.id),
+        xq(input.name),
+        hasValue
+    ].join(",") + ";";
+}
+
+function buildFfsLive(inputs) {
+    var source = inputs;
+
+    if (!source) {
+        if (typeof document === "undefined" || typeof document.querySelectorAll !== "function") {
+            return "";
+        }
+        source = document.querySelectorAll("input");
+    }
+
+    var result = "";
+    for (var i = 0; i < source.length; i++) {
+        var input = source[i];
+        if (!shouldIncludeFfsInputLive(input)) continue;
+
+        var tuple = normalizeFfsInputLive(input);
+        if (tuple != null) result += tuple;
+    }
+
+    return result;
+}
+
+function buildFpcLive(fpValStr) {
+    return String(xq(fpValStr));
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// §7  MST (Main State Telemetry)
+// ═══════════════════════════════════════════════════════════════════════
+
+function buildMstEventStateLive(options) {
+    var opts = options || {};
+
+    var devl = opts.devl == null ? 0 : opts.devl;
+    var dmvl = opts.dmvl == null ? 0 : opts.dmvl;
+    var pevl = opts.pevl == null ? 0 : opts.pevl;
+    var delt = opts.delt == null ? null : opts.delt;
+    var it = opts.it == null ? 0 : opts.it;
+
+    // Runtime-confirmed relationships:
+    //   devl -> document-event aggregate primary count
+    //   dmvl -> device/mouse-event aggregate primary count
+    //   tovl -> devl + dmvl
+    //   delt -> Date.now() - bmak.startTs
+    //   it   -> NhH (current path usually 0, semantics still pending)
+    return {
+        devl: devl,
+        dmvl: dmvl,
+        pevl: pevl,
+        tovl: opts.tovl == null ? devl + dmvl : opts.tovl,
+        delt: delt,
+        it: it
+    };
+}
+
+function computeMstDd2Live(startTs) {
+    if (startTs == null) return null;
+    return parseInt(parseInt(startTs / (2016 * 2016), 10) / 23, 10);
+}
+
+function computeMstWw8Live(dd2, options) {
+    var opts = options || {};
+
+    // Older runtime notes suggested ww8 might derive from dd2 / 6.
+    // Current live payload captures on 2026-03-30 consistently emit ww8 = 0
+    // on the no-interaction DHL tracking path, even when dd2 is non-zero.
+    //
+    // Keep the legacy derivation behind an explicit opt-in so we do not
+    // overwrite live evidence with an outdated assumption.
+    if (opts.useLegacyFormula) {
+        if (dd2 == null) return 0;
+        return parseInt(dd2 / 6, 10);
+    }
+
+    return 0;
+}
+
+function computeMstDvcLive(options) {
+    var opts = options || {};
+    var hash = opts.hash;
+    var delta = opts.delta;
+    var plugins = opts.plugins;
+
+    if (hash == null && opts.parts) hash = opts.parts[0];
+    if (delta == null && opts.parts) delta = opts.parts[1];
+    if (plugins == null && opts.parts) plugins = opts.parts[2];
+
+    if (hash == null && delta == null && plugins == null) {
+        return "";
+    }
+
+    return [
+        hash == null ? "" : String(hash),
+        delta == null ? "" : String(delta),
+        plugins == null ? "" : String(plugins)
+    ].join(",");
+}
+
+function buildMstLive(options) {
+    var opts = options || {};
+    var fpState = opts.fpState || {};
+    var mstEventState = buildMstEventStateLive(opts.mstEventState);
+    var startTs = opts.startTimestamp == null ? null : opts.startTimestamp;
+    var dd2 = computeMstDd2Live(startTs);
+    var dvc = opts.dvc;
+
+    // Auto-generate jsrf1/jsrf2 from startTs when not explicitly provided.
+    // genJsrfLive(startTs) → [jsrf1, jsrf2] using the tml algorithm.
+    var jsrfPair = (opts.jsrf1 == null && opts.jsrf2 == null && startTs != null)
+        ? genJsrfLive(startTs)
+        : [null, null];
+
+    if (dvc == null) {
+        dvc = computeMstDvcLive({
+            hash: opts.dvcHash,
+            delta: opts.dvcDelta,
+            plugins: opts.dvcPlugins,
+            parts: opts.dvcParts
+        });
+    }
+
+    return opts.mst || [
+        { kevl: (opts.kevl || 0) | 1 },
+        { mevl: (opts.mevl || 0) | 32 },
+        { tevl: (opts.tevl || 0) | 32 },
+        { devl: mstEventState.devl },
+        { dmvl: mstEventState.dmvl },
+        { pevl: mstEventState.pevl },
+        { tovl: mstEventState.tovl },
+        { delt: mstEventState.delt },
+        { it: mstEventState.it },
+        { sts: startTs },
+        { fct: opts.fct == null ? (fpState.td == null ? null : fpState.td) : opts.fct },
+        { dd2: dd2 },
+        { kc: opts.kc == null ? 0 : opts.kc },
+        { mc: opts.mc == null ? 0 : opts.mc },
+        { ww8: opts.ww8 == null ? computeMstWw8Live(dd2, opts) : opts.ww8 },
+        { pc: opts.pc == null ? 0 : opts.pc },
+        { tc: opts.tc == null ? 0 : opts.tc },
+        // Live captures show ssts is not simply delt + 1 on the current bundle.
+        // Leave it caller-controlled when available; otherwise keep the older
+        // fallback for backwards comparison.
+        { ssts: opts.ssts == null ? (mstEventState.delt == null ? null : mstEventState.delt + 1) : opts.ssts },
+        { tst: opts.tst == null ? mstEventState.tovl : opts.tst },
+        { rval: fpState.rVal || "-1" },
+        { rcfp: fpState.rCFP || "-1" },
+        { nfas: opts.nfas == null ? 30261689 : opts.nfas },
+        { jsrf: opts.jsrf == null ? "PiZtE" : opts.jsrf },
+        { jsrf1: opts.jsrf1 == null ? jsrfPair[0] : opts.jsrf1 },
+        { jsrf2: opts.jsrf2 == null ? jsrfPair[1] : opts.jsrf2 },
+        { signals: opts.signals == null ? "0" : String(opts.signals) },
+        { mwd: opts.mwd == null ? "0" : String(opts.mwd) },
+        { hea: opts.hea == null ? "" : String(opts.hea) },
+        { dvc: dvc },
+        { srd: opts.srd == null ? "0" : String(opts.srd) },
+        { tid: opts.tid == null ? "" : String(opts.tid) }
+    ];
+}
+
+// jsrf1/jsrf2 generation — runtime-verified 2026-04-01 (g-bundle: tml function)
+//
+// g-bundle variable mapping: tml → genJsrfLive, X9l → euclidean3d
+//   UAl = tml(bmak.startTs)  →  [jsrf1, jsrf2]
+//
+// Algorithm:
+//   1. jsrf1 = floor(random()*100000 + 10000)   — 5-6 digit random int
+//   2. hWl   = String(startTs * jsrf1)           — large number string
+//   3. Slice 6 two-digit numbers from hWl:
+//      - if hWl.length >= 18: step by 3 chars (skip every 3rd char)
+//      - else: step by 2 chars (contiguous pairs)
+//   4. jsrf2 = floor(sqrt((p0-p1)^2 + (p2-p3)^2 + (p4-p5)^2))
+//      — 3D Euclidean distance of three pair-differences
+function genJsrfLive(startTs) {
+    var jsrf1 = Math.floor(Math.random() * 100000 + 10000);
+    var hWl = String(Number(startTs) * jsrf1);
+
+    var idx = 0;
+    var parts = [];
+    var step3 = hWl.length >= 18;
+
+    while (parts.length < 6) {
+        parts.push(parseInt(hWl.slice(idx, idx + 2), 10));
+        idx += step3 ? 3 : 2;
+    }
+
+    var d1 = parts[0] - parts[1];
+    var d2 = parts[2] - parts[3];
+    var d3 = parts[4] - parts[5];
+    var jsrf2 = Math.floor(Math.sqrt(d1 * d1 + d2 * d2 + d3 * d3));
+
+    return [jsrf1, jsrf2];
+}
+
+function buildMstObjectMapLive(mst) {
+    var arr = mst || [];
+    var out = {};
+
+    for (var i = 0; i < arr.length; i++) {
+        var item = arr[i];
+        if (!item || typeof item !== "object") continue;
+
+        var keys = Object.keys(item);
+        if (keys.length !== 1) continue;
+
+        out[keys[0]] = item[keys[0]];
+    }
+
+    return out;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// §8  Misc Payload Field Builders  (ajr, ajt, ffl, hls, ver, per, dsi, wsl, sww)
+// ═══════════════════════════════════════════════════════════════════════
+
+function buildAjrLive(userAgent, startTimestamp) {
+    // Runtime-verified via Proxy on P9G()(payload):
+    // the live code accesses payload.startTimestamp.
+    //
+    // On the current bundle/path, that field is presently undefined, so the
+    // second half is sha256("undefined"). Earlier bundle versions passed an
+    // actual timestamp here.
+    return sha256Hex(userAgent) + sha256Hex(String(startTimestamp));
+}
+
+function buildAjtLive(options) {
+    var opts = options || {};
+    var lpw = opts.ajtState;
+    var counter = opts.ajtCount;
+
+    if (lpw == null && opts.LPW != null) lpw = opts.LPW;
+    if (counter == null && opts.v3W != null) counter = opts.v3W;
+
+    // Static trace in live.js:
+    //   cKW = LPW + "," + v3W
+    // LPW is a small state code written by multiple interaction branches,
+    // while v3W is incremented as those branches pass through UAW()/fcW().
+    // Current no-interaction live captures on 2026-03-31 show "0,0".
+    return [
+        lpw == null ? 0 : lpw,
+        counter == null ? 0 : counter
+    ].join(",");
+}
+
+function getAkamaiScriptUrlLive() {
+    if (typeof document === "undefined") return "";
+
+    var scripts = document.scripts || [];
+    for (var i = 0; i < scripts.length; i++) {
+        var src = scripts[i] && scripts[i].src;
+        if (!src) continue;
+        if (src.indexOf("/lUuI09H8") === -1) continue;
+        if (src.indexOf("/nwEPFIB") === -1) continue;
+        return src;
+    }
+
+    return "";
+}
+
+function buildFflLive(options) {
+    var opts = options || {};
+    var src = opts.akamaiScriptUrl || getAkamaiScriptUrlLive();
+    if (!src) return "";
+
+    try {
+        var url = new URL(src, typeof location !== "undefined" ? location.href : "https://www.dhl.com");
+        var parts = url.pathname.split("/").filter(Boolean);
+
+        // Runtime evidence on 2026-03-31:
+        //   script URL = /lUuI09H8kk2lCTn_ihnlZXLM/J3aE8rSc6GQSLfJO/ZHE1PQ/dlZdB/nwEPFIB
+        //   captured ffl = "J3aE8rSc6GQSLfJO"
+        // Therefore current bundle/path maps ffl to pathname segment[1].
+        return parts[1] || "";
+    } catch (e) {
+        return "";
+    }
+}
+
+function buildHlsLive(options) {
+    var opts = options || {};
+    if (Object.prototype.hasOwnProperty.call(opts, "hls")) {
+        return opts.hls;
+    }
+
+    // Runtime evidence on 2026-03-31 (current DHL no-interaction path) showed
+    // hls may stay undefined until serialization time, but keep the older
+    // static fallback here so the reconstruction emits a stable value unless
+    // the caller provides a bundle-specific override.
+    return "-1,,,1,";
+}
+
+function buildVerLive(options) {
+    var opts = options || {};
+    if (opts.ver) return opts.ver;
+
+    // `ver` rotates with the live bundle even when the script path stays the same.
+    // Static traces on 2026-03-31 confirmed it is a bundle-initialized decoded
+    // constant, not a request-time hash, so keeping an old hardcoded value here is
+    // actively misleading. Callers should inject a fresh value, e.g. from a helper
+    // such as `extract_ver.js`, before constructing the payload.
+    return "";
+}
 
 // ─── per: Permissions API probe (20 permission names) ───
 // Runtime-verified 2026-03-30: "99999944949322244999"
@@ -1101,41 +943,344 @@ function buildSwwLive(opts) {
     };
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// §9  9013 Payload Assembly
+// ═══════════════════════════════════════════════════════════════════════
+
+function build9013PayloadLive(options) {
+    var opts = options || {};
+    var locationHref = typeof location !== "undefined" ? location.href : "";
+    var fpState = opts.fpState || {};
+    var mstEventState = buildMstEventStateLive(opts.mstEventState);
+    var ffs = opts.ffs || buildFfsLive(opts.inputs);
+    var startTs = opts.startTimestamp == null ? null : opts.startTimestamp;
+
+    // mst field generation — runtime-traced 2026-03-30 (HmK function, gpK array)
+    //
+    // Variable mapping (live bundle → field):
+    //   C2K → kevl    qPK → mevl    sDK → tevl
+    //   mPK → devl    CTK → dmvl    vEK → pevl
+    //   FzK → tovl    GNK → delt    qrK → it
+    //   PEK → sts     HzK → fct     bLK → dd2
+    //   mEK → kc      OtK → mc      U2K → ww8
+    //   BDK → pc      qtK → tc      hsK → ssts
+    //   qCK → tst     htK → nfas    NrK → jsrf
+    //   VPK → jsrf1/jsrf2    n6K → signals
+    //   MrK+brK+j0K → dvc
+    //
+    // Field computation rules:
+    //   kevl = C2K | 1      (bitwise OR with default 1)
+    //   mevl = qPK | 32     (bitwise OR with default 32)
+    //   tevl = sDK | 32     (bitwise OR with default 32)
+    //   devl = second field of doe string (doc event timestamp delta)
+    //   dmvl = second field of dme string (device motion timestamp delta)
+    //   pevl = pointer event aggregate (0 on no-interaction path)
+    //   tovl = devl + dmvl
+    //   delt = Date.now() - bmak.startTs (captured at function entry)
+    //   it   = 0 on current path
+    //   sts  = bmak.startTs
+    //   fct  = fpState.td (fingerprint timing delta)
+    //   dd2  = parseInt(parseInt(startTs / (2016*2016), 10) / 23, 10)
+    //   ww8  = parseInt(dd2 / 6, 10)
+    //   ssts = delt + 1  (captured 1ms after delt)
+    //   tst  = tovl      (same value)
+    //   rval = fpState.rVal (default "-1")
+    //   rcfp = fpState.rCFP (default "-1")
+    //   nfas = 30261689  (dispatcher case 62, bundle constant)
+    //   jsrf = "PiZtE"   (fixed)
+    //   jsrf1/jsrf2 = VPK[0]/VPK[1] (script integrity values)
+    //   dvc  = MrK + "," + brK + "," + j0K
+    //          MrK = SY(delt, ajr, fct, tovl) — canvas/webgl fingerprint hash
+    //          brK = lkK() - AnK (small time delta, ~8ms)
+    //          j0K = plugin enumeration string (e.g. "j+k+d+l+i+e+g+h+c+a+")
+
+    var mst = buildMstLive({
+        mst: opts.mst,
+        mstEventState: mstEventState,
+        startTimestamp: startTs,
+        fpState: fpState,
+        fct: opts.fct,
+        kevl: opts.kevl,
+        mevl: opts.mevl,
+        tevl: opts.tevl,
+        kc: opts.kc,
+        mc: opts.mc,
+        pc: opts.pc,
+        tc: opts.tc,
+        ww8: opts.ww8,
+        ssts: opts.ssts,
+        tst: opts.tst,
+        nfas: opts.nfas,
+        jsrf: opts.jsrf,
+        jsrf1: opts.jsrf1,
+        jsrf2: opts.jsrf2,
+        signals: opts.signals,
+        mwd: opts.mwd,
+        hea: opts.hea,
+        dvc: opts.dvc,
+        dvcHash: opts.dvcHash,
+        dvcDelta: opts.dvcDelta,
+        dvcPlugins: opts.dvcPlugins,
+        dvcParts: opts.dvcParts,
+        srd: opts.srd,
+        tid: opts.tid
+    });
+
+    return {
+        ver: buildVerLive(opts),
+        fpt: opts.fpt || fpState.fpValStr || ";-1;dis;,7;true;true;true;-480;true;24;24;true;false;-1",
+        fpc: opts.fpc || buildFpcLive(opts.fpt || fpState.fpValStr || ";-1;dis;,7;true;true;true;-480;true;24;24;true;false;-1"),
+        ajr: opts.ajr || buildAjrLive(opts.userAgent || navigator.userAgent, opts.startTimestamp),
+        din: opts.din || (typeof window !== "undefined" ? getBrowserFingerprint() : []),
+        eem: opts.eem || "do_en,dm_en,t_en",
+        ffs: ffs,
+        vev: opts.vev || "",
+        inf: opts.inf || ffs,
+        ajt: opts.ajt || buildAjtLive(opts),
+        kev: opts.kev || "",
+        dme: opts.dme || "",
+        mev: opts.mev || "",
+        doe: opts.doe || "",
+        pur: opts.pur || locationHref,
+        pev: opts.pev || "",
+        mst: mst,
+        o9: opts.o9 == null ? 0 : opts.o9,
+        tev: opts.tev || "",
+        sde: opts.sde || "0,0,0,0,1,0,0",
+        // per: 20-char string, each digit = Permissions API query result
+        //   digits: 9=not_supported/error, 4=denied, 3=prompt, 2=granted
+        //   queries 20 permission names in fixed order (browser-dependent)
+        per: opts.per || buildPerLive(),
+        // dsi: 12-field array — DOM/script integrity checks
+        dsi: opts.dsi || buildDsiLive(),
+        // wsl: 20-field CSV — performance.memory + meta count + flags
+        //   [0]=jsHeapSizeLimit, [1]=totalJSHeapSize, [2]=usedJSHeapSize,
+        //   [3]=-1(AudioContext?), [4]=meta_tags_count,
+        //   [5-9]=capability_flags, [10-17]=empty(WebGL unavailable), [18-19]=flags
+        wsl: opts.wsl || buildWslLive(),
+        // hls: 5-field CSV / async probe result.
+        // Current no-interaction live path keeps the key enumerable but leaves
+        // the value undefined before JSON.stringify, so it is omitted from the
+        // serialized payload. Callers can still force a value via opts.hls.
+        hls: buildHlsLive(opts),
+        pde: opts.pde || "",
+        oev: opts.oev || "",
+        if: opts.ifField || "",
+        pus: opts.pus == null ? 0 : opts.pus,
+        // ffl: script identifier derived from the Akamai script URL path.
+        // Runtime capture on 2026-03-31:
+        //   URL  = /lUuI09H8kk2lCTn_ihnlZXLM/J3aE8rSc6GQSLfJO/ZHE1PQ/dlZdB/nwEPFIB
+        //   ffl  = "J3aE8rSc6GQSLfJO"
+        // so current bundle/path uses the second pathname segment.
+        ffl: opts.ffl || buildFflLive(opts),
+        // sww: Client Hints consistency check — each API sampled twice
+        //   odd=initial, even=re-check (anti-spoofing)
+        sww: opts.sww || buildSwwLive(),
+        te: opts.te == null ? 0 : opts.te,
+        nte: opts.nte == null ? 0 : opts.nte,
+        mte: opts.mte == null ? 0 : opts.mte,
+        tcd: opts.tcd || {},
+        pnte: opts.pnte == null ? 0 : opts.pnte,
+        pte: opts.pte == null ? 0 : opts.pte,
+        pmte: opts.pmte == null ? 0 : opts.pmte,
+        tab: opts.tab == null ? 0 : opts.tab,
+        // sws: service-worker state bit.
+        // Static trace:
+        //   payload emits `dDW ? 1 : 0`
+        //   dDW is seeded false on the current path, then flipped through the
+        //   M3W() branch that depends on serviceWorker-related capability checks.
+        sws: opts.sws == null ? 0 : opts.sws,
+        mis: opts.mis == null ? 0 : opts.mis,
+        og: opts.og || "sm"
+    };
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// §10  Encode + Sensor Data Final Assembly
+// ═══════════════════════════════════════════════════════════════════════
+
+// Header generation — runtime-verified 2026-04-01 (g-bundle: P2l/Gtl functions)
+//
+// g-bundle variable mapping:
+//   P2l → buildHeaderLive (first POST)
+//   Gtl → buildHeaderLive with isSecondPost=true (second POST)
+//   bXl → sha256Base64 (per-bundle constant, statically extractable)
+//
+// Header format: "{version};{flag1};{flag2};{flag3};{timeDiff};{sha256Base64}"
+//   First POST:  "3;0;1;0;{T3l[0]};{bXl}"
+//   Second POST: "3;1;2;0;{T3l[0]};{bXl}"
+//
+// T3l[0] is the first element of the seeds array (bm_sz cookie seed).
+// bXl is a per-bundle decoded constant (like ver/seeds[1]) — must be
+// extracted from each new bundle; cannot be hardcoded long-term.
+function buildHeaderLive(options) {
+    var opts = options || {};
+    var seeds = opts.seeds || [0, 0];
+    var isSecondPost = opts.isSecondPost || false;
+    var sha256Base64 = opts.sha256Base64 || "";
+
+    var version = "3";
+    var flag1 = isSecondPost ? "1" : "0";
+    var flag2 = isSecondPost ? "2" : "1";
+    var flag3 = "0";
+    var timeDiff = String(seeds[0]);
+
+    return [version, flag1, flag2, flag3, timeDiff, sha256Base64].join(";");
+}
+
+// Encode pipeline — runtime-verified 2026-03-26
+//
+// Live bundle flow (bSs function):
+//   1. DzB = JSON.stringify(payload)
+//   2. DzB = BVB(29, [DzB, seeds[1]])   → ahnPermute (token shuffle on ":")
+//   3. DzB = nTB(DzB, seeds[0])          → czG encryption + header assembly
+//
+// seeds[0] = bm_sz cookie ~part[2]  (per-session, e.g. 3686709)
+// seeds[1] = bundle constant via AI  (per-bundle, e.g. 4257762)
+//
+// Previous implementation was wrong: used pair[1] for czG and skipped AhN.
+// Correct order: AhN with seeds[1], then czG with seeds[0].
+function encode9013PayloadLive(payload, seeds) {
+    var pair = seeds || H4G_live();
+    var json = JSON.stringify(payload);
+    var permuted = ahnPermute(json, pair[1]);
+    return czG_live(permuted, pair[0]);
+}
+
+// Timing segment — runtime-verified 2026-04-01 (g-bundle: tTl construction)
+//
+// g-bundle variable mapping (6 comma-separated values):
+//   [0] qr(tZl(), CJl)  = total sensor generation elapsed (Date.now() - captureStart)
+//   [1] p0l = EF8() elapsed (fingerprint computation time)
+//   [2] BSl = fixed 0
+//   [3] Fzl = rX(...) elapsed (encryption step time)
+//   [4] VRl = X4l(...) elapsed (permutation step time)
+//   [5] JRl = async chain elapsed (tZl() - COl)
+//
+// Example: "25,0,0,2,3,0"
+function buildTimingSegmentLive(fields) {
+    var input = fields || {};
+
+    return [
+        input.elapsedSinceStart != null ? input.elapsedSinceStart : 0,
+        input.fpElapsed != null ? input.fpElapsed : (input.j0H != null ? input.j0H : 0),
+        input.fixed0 != null ? input.fixed0 : (input.E0Y != null ? input.E0Y : 0),
+        input.encryptElapsed != null ? input.encryptElapsed : (input.jgH != null ? input.jgH : 0),
+        input.permuteElapsed != null ? input.permuteElapsed : (input.p0Y != null ? input.p0Y : 0),
+        input.asyncElapsed != null ? input.asyncElapsed : (input.k7Y != null ? input.k7Y : 0)
+    ].join(",");
+}
+
+function concatSensorDataSegmentsLive(header, timingSegment, encryptedPayload) {
+    // test.js 9094:
+    //   SUH = MTY + ";" + nNY + ";" + SUH;
+    return String(header) + ";" + String(timingSegment) + ";" + String(encryptedPayload);
+}
+
+function buildSensorDataFromBrowserPayloadLive(options) {
+    var opts = options || {};
+    var payloadJson = opts.payloadJson;
+
+    if (payloadJson == null) {
+        if (opts.payload == null) {
+            throw new Error("buildSensorDataFromBrowserPayloadLive requires payloadJson or payload");
+        }
+        payloadJson = JSON.stringify(opts.payload);
+    }
+
+    var encryptedPayload = opts.encryptedPayload;
+    if (encryptedPayload == null) {
+        var pair = opts.seeds || H4G_live();
+        encryptedPayload = czG_live(payloadJson, pair[1]);
+    }
+
+    var header = opts.header;
+    if (header == null) {
+        if (opts.sha256Base64 == null) {
+            throw new Error("buildSensorDataFromBrowserPayloadLive requires header or sha256Base64");
+        }
+        header = buildHeaderLive({
+            seeds: pair,
+            isSecondPost: opts.isSecondPost,
+            sha256Base64: opts.sha256Base64
+        });
+    }
+
+    var timingSegment = opts.timingSegment;
+    if (timingSegment == null) {
+        if (opts.timingFields == null) {
+            throw new Error("buildSensorDataFromBrowserPayloadLive requires timingSegment or timingFields");
+        }
+        timingSegment = buildTimingSegmentLive(opts.timingFields);
+    }
+
+    return concatSensorDataSegmentsLive(header, timingSegment, encryptedPayload);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// §11  Exports
+// ═══════════════════════════════════════════════════════════════════════
+
 module.exports = {
-    BX4_S9_live,
-    H4G_live,
+    // §1 Utilities
+    xq,
+    shuffleFingerprint,
+
+    // §2 Encryption / Permutation
     ahnPermute,
     ahnUnpermute,
-    build9013PayloadLive,
-    buildAjrLive,
+    czG_live,
+
+    // §3 Seed Extraction
+    H4G_live,
+
+    // §4 Browser Feature / Bot Detection Probes
+    BX4_S9_live,
+    getPhaLive,
+    getWdrLive,
+    getDauLive,
+    getTsdLive,
+    getAdpLive,
+    getIbrLive,
+
+    // §5 Browser Fingerprint Assembly
+    getBrowserFingerprint,
+
+    // §6 Form Fingerprint
+    getFfsTypeCodeLive,
+    getFfsAutocompleteCodeLive,
+    shouldIncludeFfsInputLive,
+    normalizeFfsInputLive,
     buildFfsLive,
     buildFpcLive,
+
+    // §7 MST
+    buildMstEventStateLive,
+    computeMstDd2Live,
+    computeMstWw8Live,
+    computeMstDvcLive,
+    genJsrfLive,
     buildMstLive,
     buildMstObjectMapLive,
-    buildMstEventStateLive,
-    buildSensorDataFromBrowserPayloadLive,
-    buildTimingSegmentLive,
-    concatSensorDataSegmentsLive,
-    computeMstDd2Live,
-    computeMstDvcLive,
-    computeMstWw8Live,
-    czG_live,
-    encode9013PayloadLive,
-    getFfsAutocompleteCodeLive,
-    getFfsTypeCodeLive,
-    getAdpLive,
-    getBrowserFingerprint,
-    getDauLive,
-    getIbrLive,
-    getPhaLive,
-    getTsdLive,
-    getWdrLive,
-    normalizeFfsInputLive,
-    shouldIncludeFfsInputLive,
-    shuffleFingerprint,
-    xq,
+
+    // §8 Misc Payload Field Builders
+    buildAjrLive,
+    buildAjtLive,
+    buildFflLive,
+    buildHlsLive,
+    buildVerLive,
     buildPerLive,
     buildDsiLive,
     buildWslLive,
     buildSwwLive,
+
+    // §9 Payload Assembly
+    build9013PayloadLive,
+
+    // §10 Encode + Sensor Data
+    buildHeaderLive,
+    encode9013PayloadLive,
+    buildTimingSegmentLive,
+    concatSensorDataSegmentsLive,
+    buildSensorDataFromBrowserPayloadLive,
 };

@@ -557,6 +557,8 @@
 | `tst` | `= tovl` | 未验证 |
 | `nfas` | 固定 `30261689`（bundle 常量） | 未验证 |
 | `jsrf` | 固定 `"PiZtE"` | 未验证 |
+| `jsrf1` | `genJsrfLive(startTs)[0]` = `floor(random()*100000+10000)` | 未验证 |
+| `jsrf2` | `genJsrfLive(startTs)[1]` = 三维欧氏距离 | 未验证 |
 
 **公式已识别但未落地到代码 ⚠️ (仍从 opts 透传)**
 
@@ -602,10 +604,11 @@
   - 有交互时: 计数逻辑未还原
   - 需要: Windows 真实浏览器验证有交互时的计数值
 
-- [ ] **`jsrf1`/`jsrf2`** — 纯透传 null
-  - 脚本完整性值，**每次请求都不同**
-  - headless 样本: `60246/82`, `83573/41`, `30944/54`
-  - 需要: 完整还原计算逻辑（可能是对 bundle 自身做 hash/checksum），Windows 验证
+- [x] **`jsrf1`/`jsrf2`** — ✅ 完整还原 (2026-04-01, g-bundle: tml/X9l 函数)
+  - **不是脚本完整性 hash** — 实际是基于 `startTs * random` 的伪随机派生值
+  - `jsrf1 = floor(random()*100000 + 10000)` — 5-6 位随机整数
+  - `jsrf2 = floor(sqrt((p0-p1)^2 + (p2-p3)^2 + (p4-p5)^2))` — 从 `String(startTs*jsrf1)` 切 6 个两位数后做三维欧氏距离
+  - 已落地: `screen_node_xag_live.js → genJsrfLive(startTs)`, `buildMstLive()` 自动调用
 
 - [ ] **`signals`** — 透传默认 `"0"`
   - 信号位，含义和计算未还原，需 Windows 验证实际值
@@ -630,14 +633,20 @@
 
 ### P1.5 — 数据组装（已有条目保留）
 
-- [ ] **`w3N()/S7Y()/cmH()` sensor_data 头部生成**
-  - 已知 header 格式: `"3;0;1;0;{timestamp_diff};{sha256};{counts}"`
-  - 需要: 确认 version 和 flag 字段的来源
-  - 需要: 确认 counts 字段 `"25,0,0,2,3,0"` 各元素含义
+- [x] **`w3N()/S7Y()/cmH()` sensor_data 头部生成** ✅ (2026-04-01, g-bundle: P2l/Gtl 函数)
+  - header 格式 (已修正): `"3;{flag1};{flag2};0;{seeds[0]};{sha256Base64}"`
+  - **第 1 次 POST (P2l)**: `"3;0;1;0;{seeds[0]};{bXl}"`
+  - **第 2 次 POST (Gtl)**: `"3;1;2;0;{seeds[0]};{bXl}"`
+  - `bXl` = per-bundle sha256_base64 常量（与 ver/seeds[1] 同级，可静态提取）
+  - g-bundle 运行时值: `TatBRT77dr3vBgV/vmWUQxkz/3/wAR5i55mBt2a7wEk=`
+  - 之前以为的 `"25,0,0,2,3,0"` counts 实际是 **timing segment**（第二段），不是 header
+  - timing segment 6 字段: 总耗时, 指纹耗时, 0(固定), 加密耗时, 置换耗时, 异步耗时
+  - 已落地: `screen_node_xag_live.js → buildHeaderLive()`, `buildTimingSegmentLive()` 已更新
 
-- [ ] **`UMN()/bRH()` startTs 变换**
-  - 已知: 使用 `Math.random` + `Math.floor`，返回 `[number, number]`
-  - 需要: 完整还原算法
+- [x] **`UMN()/bRH()` startTs 变换** ✅ (2026-04-01, g-bundle 静态确认)
+  - g 版直接使用 `Date.now()`，**无复杂变换**
+  - 旧版 `UMN/bRH` 职责在 g 版对应 `tml(startTs)` = `genJsrfLive()` (派生 jsrf1/jsrf2)
+  - 不再需要单独还原
 
 ### P2 — 事件与初始化（无用户交互时可跳过）
 
@@ -661,24 +670,25 @@
 P0 — 无交互路径生成合法 sensor_data 必须:
   1. ver: 从 bundle 提取 (每版本变化)
   2. ffl: 从 bundle URL 提取 ✅
-  3. dvc.hash (SY 函数): 核心校验码
-  4. jsrf1/jsrf2: 脚本完整性 (每次请求变化)
-  5. sts/startTs: bRH() 变换逻辑
-  6. header 生成: S7Y()/cmH()
-  7. dsi.ico: sha256 输入源
+  3. dvc.hash (SY/GY 函数): 核心校验码 — VM trampoline，需运行时断点
+  4. jsrf1/jsrf2: ✅ 已还原 (genJsrfLive, 基于 startTs*random)
+  5. sts/startTs: ✅ g 版直接 Date.now()，无复杂变换
+  6. header 生成: ✅ 已还原 (buildHeaderLive, P2l/Gtl)
+  7. dsi.ico: sha256 输入源 — 需运行时断点
   8. ssts: 实际计算逻辑
+  9. bXl: per-bundle sha256_base64 常量 — 需提取器 (类似 extract_seed1.js)
 
 P1 — 提高通过率:
-  9. per: Permissions API 查询
-  10. wsl[5-17]: 能力标志 + WebGL 参数
-  11. sww.swrt/wrt: 运行时指标
-  12. hls: 5 字段来源
-  13. ajt: 生成逻辑
-  14. rval/rcfp/signals/mwd/hea/srd/tid: 来源确认
+  10. per: Permissions API 查询
+  11. wsl[5-17]: 能力标志 + WebGL 参数
+  12. sww.swrt/wrt: 运行时指标
+  13. hls: 5 字段来源
+  14. ajt: 生成逻辑
+  15. rval/rcfp/signals/mwd/hea/srd/tid: 来源确认
 
 P2 — 有交互时:
-  15. 9 个事件字段生成逻辑
-  16. mst 事件计数器 (kc/mc/pc/tc/kevl/mevl/tevl 等)
+  16. 9 个事件字段生成逻辑
+  17. mst 事件计数器 (kc/mc/pc/tc/kevl/mevl/tevl 等)
 ```
 
 ---
@@ -780,16 +790,17 @@ NnW  = cQW[B7]       → if  (input focus)
 ```
 1. AhN 字符置换 ← ✅ 已完成
 2. seeds[1] 提取 ← ✅ 已完成 (AST 自动提取, extract_seed1.js)
+3. jsrf1/jsrf2 ← ✅ 已完成 (genJsrfLive, startTs*random 派生)
+4. header 生成 ← ✅ 已完成 (buildHeaderLive, P2l/Gtl)
+5. startTs 变换 ← ✅ g 版直接 Date.now()
    ↓
-3. dvc/SY 校验码  ← canvas/webgl 指纹哈希 + 插件枚举
+6. dvc/SY 校验码 ← VM trampoline，需运行时断点还原
    ↓
-4. dsi/wsl/sww 新字段  ← payload 完整性
+7. bXl 提取器 ← per-bundle sha256_base64 常量，需 AST 提取
    ↓
-5. 头部生成 + counts 字段  ← 拼接最终字符串
+8. dsi.ico ← sha256 输入源，需运行时断点
    ↓
-6. UMN startTs 变换  ← 正确填充数据
+9. dsi/wsl/sww 完善 ← payload 完整性
    ↓
-7. jsrf1/jsrf2 脚本完整性  ← 理解计算逻辑
-   ↓
-8. 本地生成器实现  ← 用 Node.js 实现完整 sensor_data 构造
+10. 本地生成器实现 ← 用 Node.js 实现完整 sensor_data 构造
 ```
