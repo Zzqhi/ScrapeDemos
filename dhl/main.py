@@ -28,12 +28,11 @@ def build_cookie_string(cookie_dict):
 def generate_sensor_data_locally(cookie_str, script_path, page_url, post_url):
     payload = {
         "cookie": cookie_str,
-        "script_path": script_path,
         "page_url": page_url,
         "post_url": post_url,
     }
     result = subprocess.run(
-        ["node", "dhl/scripts/gen_sensor.js"],
+        ["node", "dhl/scripts/gen_sensor_v2.js"],
         input=json.dumps(payload),
         capture_output=True,
         text=True,
