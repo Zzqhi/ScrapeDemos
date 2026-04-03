@@ -309,7 +309,9 @@ function buildMst(opts) {
         { ww8: 0 },
         { pc: 0 },
         { tc: 0 },
-        { ssts: o.ssts != null ? o.ssts : delt + 6 },
+        // ssts = independent Date.now()-startTs sample, slightly after delt
+        // Observed: delt=5→ssts=13(+8), delt=3→ssts=4(+1), delt=1074→ssts=1074(+0)
+        { ssts: o.ssts != null ? o.ssts : delt + Math.floor(Math.random() * 10) },
         { tst: 0 },
         { rval: "-1" },
         { rcfp: "-1" },
