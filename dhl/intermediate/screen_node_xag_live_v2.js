@@ -241,35 +241,26 @@ function buildFfs(inputs) {
 // ═══════════════════════════════════════════════════════════════════════
 // [C] changed 2026-04-03: completely new format
 // v1: sha256Hex(ua) + sha256Hex(String(startTimestamp))
-// v2: prefix + dinValues.join(",")
-//   prefix = "{uaSuffix},{wih},{npl},{screenWidth},{per}|{t1}|{t2}|"
-//   suffix = din values concatenated with commas
+// v2: dinJoined.slice(min(t1,t2), max(t1,t2)) + "|" + t1 + "|" + t2 + "|" + dinJoined
+//   t1, t2 = two random offsets into dinJoined (0..dinJoined.length-1)
+//   prefix = substring of dinJoined between the two offsets
 //
-// Observed: ".36,780,5,1718,8|210|194|en-US,1718,0,..."
-//   .36 = tail of "537.36" from UA
-//   780 = wih, 5 = npl, 1718 = screenWidth
-//   8 = per value
-//   210|194 = timing deltas (TBD exact source)
+// Verified across 4 page loads, 8 POST captures.
 
 function buildAjr(opts) {
     var o = opts || {};
     var din = o.din || [];
-    var dinValues = din.map(function(d) { return String(Object.values(d)[0]); }).join(",");
+    var dinJoined = din.map(function(d) { return String(Object.values(d)[0]); }).join(",");
+    var len = dinJoined.length;
 
-    // Extract UA version suffix (e.g. "537.36" -> ".36")
-    var ua = o.userAgent || "";
-    var uaSuffix = "";
-    var wkMatch = ua.match(/AppleWebKit\/(\d+)(\.\d+)/);
-    if (wkMatch) uaSuffix = wkMatch[2]; // ".36"
+    var t1 = o.ajrT1 != null ? o.ajrT1 : Math.floor(Math.random() * len);
+    var t2 = o.ajrT2 != null ? o.ajrT2 : Math.floor(Math.random() * len);
 
-    var wih = o.innerHeight || 1080;
-    var npl = o.pluginsLength != null ? o.pluginsLength : 5;
-    var sw = o.screenWidth || 1920;
-    var per = o.per || "8";
-    var t1 = o.ajrTiming1 != null ? o.ajrTiming1 : 210;
-    var t2 = o.ajrTiming2 != null ? o.ajrTiming2 : 194;
+    var mn = Math.min(t1, t2);
+    var mx = Math.max(t1, t2);
+    var prefix = dinJoined.slice(mn, mx);
 
-    return uaSuffix + "," + wih + "," + npl + "," + sw + "," + per + "|" + t1 + "|" + t2 + "|" + dinValues;
+    return prefix + "|" + t1 + "|" + t2 + "|" + dinJoined;
 }
 
 // ═══════════════════════════════════════════════════════════════════════

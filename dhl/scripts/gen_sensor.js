@@ -382,12 +382,30 @@ function run(config) {
     }
   }
 
-  // ========== 输出 ==========
+  // ========== 输出（等待异步 XHR 触发） ==========
+  function output() {
+    if (sensorData) {
+      process.stdout.write(JSON.stringify({ sensor_data: sensorData }));
+    } else {
+      process.stderr.write('No sensor_data captured\n');
+      process.stderr.write(`Cookies: ${getCookie()}\n`);
+      process.stdout.write(JSON.stringify({ error: 'no sensor_data' }));
+    }
+  }
+
   if (sensorData) {
-    process.stdout.write(JSON.stringify({ sensor_data: sensorData }));
+    output();
+    process.exit(0);
   } else {
-    process.stderr.write('No sensor_data captured\n');
-    process.stderr.write(`Cookies: ${getCookie()}\n`);
-    process.stdout.write(JSON.stringify({ error: 'no sensor_data' }));
+    // Bundle may POST via setTimeout; wait up to 3s for XHR to fire
+    let waited = 0;
+    const poll = setInterval(() => {
+      waited += 50;
+      if (sensorData || waited >= 3000) {
+        clearInterval(poll);
+        output();
+        process.exit(sensorData ? 0 : 1);
+      }
+    }, 50);
   }
 }
