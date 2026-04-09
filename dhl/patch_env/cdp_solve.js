@@ -27,13 +27,12 @@ async function solve(config) {
   const cdpPort = config.cdp_port || 9222;
   const cookies = config.cookies || {};
 
-  // Step 1: Get page WebSocket URL (reuse first available page)
-  const pages = await httpGet(`http://localhost:${cdpPort}/json`);
-  let page = pages.find(p => p.url.includes('dhl.com')) || pages[0];
-  if (!page) throw new Error('No Chrome page available');
-  const wsUrl = page.webSocketDebuggerUrl;
+  // Step 1: Create a new page (tab)
+  const newPage = await httpReq(`http://localhost:${cdpPort}/json/new?about:blank`, 'PUT');
+  const wsUrl = newPage.webSocketDebuggerUrl;
+  if (!wsUrl) throw new Error('Failed to create new page');
 
-  process.stderr.write(`[cdp] Connecting to ${wsUrl}\n`);
+  process.stderr.write(`[cdp] New page created, connecting to ${wsUrl}\n`);
   const cdp = new CDPClient(wsUrl);
   await cdp.connect();
 
@@ -51,13 +50,11 @@ async function solve(config) {
     await cdp.send('Network.enable');
     await cdp.send('Page.enable');
 
-    // Step 3: Navigate to blank first (force fresh load), then to target
-    process.stderr.write('[cdp] Navigating to about:blank...\n');
-    await cdp.send('Page.navigate', { url: 'about:blank' });
-    await sleep(500);
+    // Step 3: Navigate to target
     process.stderr.write(`[cdp] Navigating to ${pageUrl}\n`);
+    const loadPromise = cdp.waitForEvent('Page.loadEventFired', 30000);
     await cdp.send('Page.navigate', { url: pageUrl });
-    await cdp.waitForEvent('Page.loadEventFired', 15000);
+    await loadPromise;
     process.stderr.write('[cdp] Page loaded\n');
 
     // Step 4: Wait for initial Akamai POSTs
@@ -243,6 +240,8 @@ async function solve(config) {
 
     return { status, cookies: allCookies };
   } finally {
+    // Close the tab we created
+    try { await cdp.send('Page.close'); } catch(e) {}
     cdp.close();
   }
 }
@@ -252,15 +251,23 @@ async function solve(config) {
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 function httpGet(url) {
+  return httpReq(url, 'GET');
+}
+
+function httpReq(url, method) {
   return new Promise((resolve, reject) => {
-    http.get(url, res => {
+    const parsed = new URL(url);
+    const opts = { hostname: parsed.hostname, port: parsed.port, path: parsed.pathname + parsed.search, method: method || 'GET' };
+    const req = http.request(opts, res => {
       let data = '';
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
         try { resolve(JSON.parse(data)); }
         catch(e) { reject(new Error(`Invalid JSON from ${url}: ${data.substring(0, 100)}`)); }
       });
-    }).on('error', reject);
+    });
+    req.on('error', reject);
+    req.end();
   });
 }
 
