@@ -1,8 +1,10 @@
 // Solve Akamai challenge using CDP (Chrome DevTools Protocol)
 // Requires: Chrome running with --remote-debugging-port=9222
 //
-// Usage: echo '{"page_url":"...", "script_url":"..."}' | node cdp_solve.js
-// Output: {"abck": "...", "cookies": {...}}
+// Usage: echo '{"page_url":"..."}' | node cdp_solve.js
+// Output: {"status": "0", "cookies": {...}}
+//
+// Flow: new tab → navigate → wait for 1st POST → inject interaction → wait for 2nd POST → check _abck
 
 const WebSocket = require('ws');
 const http = require('http');
@@ -25,7 +27,6 @@ process.stdin.on('end', () => {
 async function solve(config) {
   const pageUrl = config.page_url;
   const cdpPort = config.cdp_port || 9222;
-  const cookies = config.cookies || {};
 
   // Step 1: Create a new page (tab)
   const newPage = await httpReq(`http://localhost:${cdpPort}/json/new?about:blank`, 'PUT');
@@ -37,221 +38,141 @@ async function solve(config) {
   await cdp.connect();
 
   try {
-    // Step 2: Set cookies if provided
-    if (Object.keys(cookies).length > 0) {
-      for (const [name, value] of Object.entries(cookies)) {
-        await cdp.send('Network.setCookie', {
-          name, value, domain: '.dhl.com', path: '/',
-        });
-      }
-    }
-
-    // Enable necessary domains
     await cdp.send('Network.enable');
     await cdp.send('Page.enable');
 
-    // Step 3: Navigate to target
+    // Monitor Akamai POST requests
+    let postCount = 0;
+    cdp.on('Network.requestWillBeSent', (params) => {
+      if (params.request.method === 'POST') {
+        postCount++;
+        const bodyLen = (params.request.postData || '').length;
+        process.stderr.write(`[cdp] POST #${postCount} (${bodyLen} bytes)\n`);
+      }
+    });
+
+    // Step 2: Navigate to target
     process.stderr.write(`[cdp] Navigating to ${pageUrl}\n`);
     const loadPromise = cdp.waitForEvent('Page.loadEventFired', 30000);
     await cdp.send('Page.navigate', { url: pageUrl });
     await loadPromise;
     process.stderr.write('[cdp] Page loaded\n');
 
-    // Step 4: Wait for initial Akamai POSTs
+    // Step 3: Wait for Akamai 1st POST (auto-fires during/after page load)
     await sleep(4000);
 
-    // Step 5: Simulate realistic user interaction (trusted events via CDP)
-    process.stderr.write('[cdp] Simulating user interaction (round 1)...\n');
+    // Step 4: Simulate user interaction (required for 2nd POST validation)
+    process.stderr.write('[cdp] Simulating interaction...\n');
+    await simulateInteraction(cdp);
 
-    // Phase 1: Natural mouse entrance from edge + movement across page
-    for (let i = 0; i < 40; i++) {
-      const t = i / 40;
-      await cdp.send('Input.dispatchMouseEvent', {
-        type: 'mouseMoved',
-        x: Math.round(50 + t * 800 + Math.sin(i * 0.3) * 40),
-        y: Math.round(200 + t * 300 + Math.cos(i * 0.4) * 50),
-        timestamp: Date.now() / 1000,
-      });
-      await sleep(30 + Math.random() * 50);
-    }
-
-    // Phase 2: Mouse click on page body
-    const clickX = 400 + Math.floor(Math.random() * 300);
-    const clickY = 350 + Math.floor(Math.random() * 150);
-    await cdp.send('Input.dispatchMouseEvent', {
-      type: 'mousePressed', x: clickX, y: clickY,
-      button: 'left', clickCount: 1, timestamp: Date.now() / 1000,
-    });
-    await sleep(60 + Math.random() * 40);
-    await cdp.send('Input.dispatchMouseEvent', {
-      type: 'mouseReleased', x: clickX, y: clickY,
-      button: 'left', clickCount: 1, timestamp: Date.now() / 1000,
-    });
-    await sleep(200);
-
-    // Phase 3: Keyboard interaction (Tab, then type something)
-    await cdp.send('Input.dispatchKeyEvent', {
-      type: 'keyDown', key: 'Tab', code: 'Tab',
-      windowsVirtualKeyCode: 9, nativeVirtualKeyCode: 9,
-    });
-    await sleep(40);
-    await cdp.send('Input.dispatchKeyEvent', {
-      type: 'keyUp', key: 'Tab', code: 'Tab',
-      windowsVirtualKeyCode: 9, nativeVirtualKeyCode: 9,
-    });
-    await sleep(300);
-
-    // Type a few characters
-    for (const ch of ['1', '2', '3']) {
-      await cdp.send('Input.dispatchKeyEvent', {
-        type: 'keyDown', key: ch, code: `Digit${ch}`,
-        windowsVirtualKeyCode: ch.charCodeAt(0), nativeVirtualKeyCode: ch.charCodeAt(0),
-        text: ch,
-      });
-      await sleep(50 + Math.random() * 60);
-      await cdp.send('Input.dispatchKeyEvent', {
-        type: 'keyUp', key: ch, code: `Digit${ch}`,
-        windowsVirtualKeyCode: ch.charCodeAt(0), nativeVirtualKeyCode: ch.charCodeAt(0),
-      });
-      await sleep(80 + Math.random() * 80);
-    }
-
-    // Phase 4: Scroll down
-    await cdp.send('Input.dispatchMouseEvent', {
-      type: 'mouseWheel', x: 500, y: 400,
-      deltaX: 0, deltaY: 120,
-      timestamp: Date.now() / 1000,
-    });
-    await sleep(500);
-    await cdp.send('Input.dispatchMouseEvent', {
-      type: 'mouseWheel', x: 500, y: 400,
-      deltaX: 0, deltaY: 200,
-      timestamp: Date.now() / 1000,
-    });
-    await sleep(300);
-
-    // Phase 5: More mouse movements (mimic reading/scanning page)
-    for (let i = 0; i < 20; i++) {
-      await cdp.send('Input.dispatchMouseEvent', {
-        type: 'mouseMoved',
-        x: Math.round(300 + Math.random() * 500),
-        y: Math.round(200 + Math.random() * 400),
-        timestamp: Date.now() / 1000,
-      });
-      await sleep(40 + Math.random() * 60);
-    }
-
-    // Phase 6: Another click
-    const clickX2 = 350 + Math.floor(Math.random() * 400);
-    const clickY2 = 300 + Math.floor(Math.random() * 200);
-    await cdp.send('Input.dispatchMouseEvent', {
-      type: 'mousePressed', x: clickX2, y: clickY2,
-      button: 'left', clickCount: 1, timestamp: Date.now() / 1000,
-    });
-    await sleep(70);
-    await cdp.send('Input.dispatchMouseEvent', {
-      type: 'mouseReleased', x: clickX2, y: clickY2,
-      button: 'left', clickCount: 1, timestamp: Date.now() / 1000,
-    });
-
-    // Step 6: Wait for Akamai to process events and POST
+    // Step 5: Wait for Akamai 2nd POST
     await sleep(5000);
 
-    // Step 7: Check _abck status
-    const cookieResult = await cdp.send('Runtime.evaluate', {
-      expression: `(function() {
-        var cs = document.cookie.split('; ');
-        var result = {};
-        cs.forEach(function(c) { var eq = c.indexOf('='); if (eq > 0) result[c.substring(0,eq)] = c.substring(eq+1); });
-        return JSON.stringify(result);
-      })()`,
-    });
-
-    const allCookies = JSON.parse(cookieResult.result.value);
-    const abck = allCookies._abck || '';
+    // Step 6: Check _abck status
+    const cookies = await getCookies(cdp);
+    const abck = cookies._abck || '';
     const status = abck.split('~')[1] || '?';
-    process.stderr.write(`[cdp] _abck status: ${status}\n`);
+    process.stderr.write(`[cdp] _abck status: ${status}, POST count: ${postCount}\n`);
 
-    if (status !== '0') {
-      // Try more rounds of interaction
-      for (let round = 1; round <= 3; round++) {
-        process.stderr.write(`[cdp] Status not 0, retry round ${round}...\n`);
+    if (status === '0') return { status, cookies };
 
-        // Mouse movements
-        for (let i = 0; i < 30; i++) {
-          await cdp.send('Input.dispatchMouseEvent', {
-            type: 'mouseMoved',
-            x: Math.round(100 + Math.random() * 700),
-            y: Math.round(100 + Math.random() * 500),
-            timestamp: Date.now() / 1000,
-          });
-          await sleep(30 + Math.random() * 50);
-        }
+    // Retry up to 3 rounds if needed
+    for (let round = 1; round <= 3; round++) {
+      process.stderr.write(`[cdp] Retry round ${round}...\n`);
+      await simulateInteraction(cdp);
+      await sleep(5000);
 
-        // Click
-        const rx = 300 + Math.floor(Math.random() * 400);
-        const ry = 250 + Math.floor(Math.random() * 250);
-        await cdp.send('Input.dispatchMouseEvent', {
-          type: 'mousePressed', x: rx, y: ry,
-          button: 'left', clickCount: 1, timestamp: Date.now() / 1000,
-        });
-        await sleep(60);
-        await cdp.send('Input.dispatchMouseEvent', {
-          type: 'mouseReleased', x: rx, y: ry,
-          button: 'left', clickCount: 1, timestamp: Date.now() / 1000,
-        });
-
-        // Scroll
-        await cdp.send('Input.dispatchMouseEvent', {
-          type: 'mouseWheel', x: 500, y: 400,
-          deltaX: 0, deltaY: 150 * round,
-          timestamp: Date.now() / 1000,
-        });
-
-        await sleep(5000);
-
-        const cookieResult2 = await cdp.send('Runtime.evaluate', {
-          expression: `(function() {
-            var cs = document.cookie.split('; ');
-            var result = {};
-            cs.forEach(function(c) { var eq = c.indexOf('='); if (eq > 0) result[c.substring(0,eq)] = c.substring(eq+1); });
-            return JSON.stringify(result);
-          })()`,
-        });
-        const allCookies2 = JSON.parse(cookieResult2.result.value);
-        const status2 = (allCookies2._abck || '').split('~')[1] || '?';
-        process.stderr.write(`[cdp] _abck status (retry ${round}): ${status2}\n`);
-        if (status2 === '0') return { status: status2, cookies: allCookies2 };
-      }
-
-      // Return last attempt result
-      const cookieFinal = await cdp.send('Runtime.evaluate', {
-        expression: `(function() {
-          var cs = document.cookie.split('; ');
-          var result = {};
-          cs.forEach(function(c) { var eq = c.indexOf('='); if (eq > 0) result[c.substring(0,eq)] = c.substring(eq+1); });
-          return JSON.stringify(result);
-        })()`,
-      });
-      const finalCookies = JSON.parse(cookieFinal.result.value);
-      const finalStatus = (finalCookies._abck || '').split('~')[1] || '?';
-      return { status: finalStatus, cookies: finalCookies };
+      const retryCookies = await getCookies(cdp);
+      const retryStatus = (retryCookies._abck || '').split('~')[1] || '?';
+      process.stderr.write(`[cdp] _abck status (retry ${round}): ${retryStatus}\n`);
+      if (retryStatus === '0') return { status: retryStatus, cookies: retryCookies };
     }
 
-    return { status, cookies: allCookies };
+    const finalCookies = await getCookies(cdp);
+    const finalStatus = (finalCookies._abck || '').split('~')[1] || '?';
+    return { status: finalStatus, cookies: finalCookies };
   } finally {
-    // Close the tab we created
     try { await cdp.send('Page.close'); } catch(e) {}
     cdp.close();
   }
+}
+
+// ─── Interaction simulation ──────────────────────────────
+
+async function simulateInteraction(cdp) {
+  // Mouse movement (curved path across page)
+  for (let i = 0; i < 30; i++) {
+    const t = i / 30;
+    await cdp.send('Input.dispatchMouseEvent', {
+      type: 'mouseMoved',
+      x: Math.round(50 + t * 800 + Math.sin(i * 0.3) * 40),
+      y: Math.round(200 + t * 300 + Math.cos(i * 0.4) * 50),
+      timestamp: Date.now() / 1000,
+    });
+    await sleep(30 + Math.random() * 40);
+  }
+
+  // Click
+  const cx = 400 + Math.floor(Math.random() * 300);
+  const cy = 350 + Math.floor(Math.random() * 150);
+  await cdp.send('Input.dispatchMouseEvent', {
+    type: 'mousePressed', x: cx, y: cy,
+    button: 'left', clickCount: 1, timestamp: Date.now() / 1000,
+  });
+  await sleep(60 + Math.random() * 40);
+  await cdp.send('Input.dispatchMouseEvent', {
+    type: 'mouseReleased', x: cx, y: cy,
+    button: 'left', clickCount: 1, timestamp: Date.now() / 1000,
+  });
+  await sleep(200);
+
+  // Keyboard (Tab + type a few chars)
+  await cdp.send('Input.dispatchKeyEvent', {
+    type: 'keyDown', key: 'Tab', code: 'Tab',
+    windowsVirtualKeyCode: 9, nativeVirtualKeyCode: 9,
+  });
+  await sleep(40);
+  await cdp.send('Input.dispatchKeyEvent', {
+    type: 'keyUp', key: 'Tab', code: 'Tab',
+    windowsVirtualKeyCode: 9, nativeVirtualKeyCode: 9,
+  });
+  await sleep(200);
+
+  for (const ch of ['1', '2', '3']) {
+    await cdp.send('Input.dispatchKeyEvent', {
+      type: 'keyDown', key: ch, code: `Digit${ch}`,
+      windowsVirtualKeyCode: ch.charCodeAt(0), nativeVirtualKeyCode: ch.charCodeAt(0),
+      text: ch,
+    });
+    await sleep(50 + Math.random() * 50);
+    await cdp.send('Input.dispatchKeyEvent', {
+      type: 'keyUp', key: ch, code: `Digit${ch}`,
+      windowsVirtualKeyCode: ch.charCodeAt(0), nativeVirtualKeyCode: ch.charCodeAt(0),
+    });
+    await sleep(60 + Math.random() * 60);
+  }
+
+  // Scroll
+  await cdp.send('Input.dispatchMouseEvent', {
+    type: 'mouseWheel', x: 500, y: 400,
+    deltaX: 0, deltaY: 150, timestamp: Date.now() / 1000,
+  });
 }
 
 // ─── Helpers ───────────────────────────────────────────────
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-function httpGet(url) {
-  return httpReq(url, 'GET');
+async function getCookies(cdp) {
+  const result = await cdp.send('Runtime.evaluate', {
+    expression: `(function() {
+      var cs = document.cookie.split('; ');
+      var result = {};
+      cs.forEach(function(c) { var eq = c.indexOf('='); if (eq > 0) result[c.substring(0,eq)] = c.substring(eq+1); });
+      return JSON.stringify(result);
+    })()`,
+  });
+  return JSON.parse(result.result.value);
 }
 
 function httpReq(url, method) {
@@ -315,6 +236,11 @@ class CDPClient {
         }
       }, 10000);
     });
+  }
+
+  on(eventName, handler) {
+    if (!this.eventHandlers.has(eventName)) this.eventHandlers.set(eventName, []);
+    this.eventHandlers.get(eventName).push(handler);
   }
 
   waitForEvent(eventName, timeout) {
