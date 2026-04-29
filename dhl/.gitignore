@@ -1,0 +1,10 @@
+node_modules/
+__pycache__/
+*.pyc
+
+# protocol-analysis: transient debug dumps
+protocol-analysis/sensor/*
+!protocol-analysis/sensor/.gitkeep
+protocol-analysis/html/
+protocol-analysis/probe/
+protocol-analysis/screenshot-*.png

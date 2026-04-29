@@ -1,0 +1,13 @@
+{
+  "name": "dhl-akamai-analysis",
+  "version": "1.0.0",
+  "description": "DHL Akamai sensor_data protocol analysis & pure-Node reproduction",
+  "scripts": {
+    "verify": "node protocol-analysis/pure_crypto.js && node protocol-analysis/verify_crypto.js",
+    "extract": "node protocol-analysis/bundle_consts.js protocol-analysis/bundle/akamai-local.js"
+  },
+  "dependencies": {
+    "@babel/parser": "^7.x",
+    "@babel/traverse": "^7.x"
+  }
+}
