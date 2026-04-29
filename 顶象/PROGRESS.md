@@ -103,7 +103,30 @@ state 偏差稳定 = greenseer 内部维护着一个**闭包/全局变量**, 它
 
 ---
 
-## 下一步: Playwright 路线
+## Playwright 路线进展(2026-04-29 更新)
+
+✅ **`playwright_solver.py` 完成 POC**:
+- 用 `/usr/bin/chromium` headed 模式驱动
+- 内嵌测试页面加载 captcha-ui
+- 抓取 `serverData.p1/p2` URL → 下载 bg + slider 图
+- ddddocr `slide_match` 计算 gap_x → 缩放到 display 300px 宽
+- 模拟 ease-out + jitter + overshoot 拖动
+- 通过 `success/fail` 回调拿 verify 响应
+
+✅ **服务端响应从 `error` → `retry`**: UA 字节被服务端接受 ✓, 只是 X 坐标算偏.
+
+❌ **`retry` 多次未通过**: ddddocr 对当前 captcha 的 gap 检测有偏差.
+`gap_x_native=228, x_display=171` 这种值看起来在合理范围, 但跟实际期望偏差导致 retry.
+
+**关键源码确认**: `basic-Captcha-js` 内 `verify_x = Math.round(e.dx) + F`,
+其中 `F=10` 当 `serverData.type === TYPE_BASIC` (我们的情况), 所以 SDK 自动加 10.
+
+**下一步定位 ddddocr 偏差**:
+1. 用 `/tmp/manual_check.py` 让用户手动滑一次, 对比 ddddocr 预测 vs 真实 verify_x
+2. 多张样本统计偏移量(可能是固定常数)
+3. 或换 OpenCV 模板匹配处理两个 triangles 的 captcha 类型
+
+## 历史下一步
 
 继续在 jsdom 里对齐 state 的成本/收益比不划算. 推荐:
 1. Playwright 启动 Chromium → 加载顶象 captcha-ui
