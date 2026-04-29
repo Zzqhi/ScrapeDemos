@@ -1,0 +1,5 @@
+__pycache__/
+captcha_output/
+scripts/node_modules/
+scripts/package-lock.json
+*.pyc
