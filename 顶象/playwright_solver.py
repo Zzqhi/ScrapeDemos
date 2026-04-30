@@ -60,35 +60,30 @@ init();
 
 
 def solve_target_x(bg_bytes: bytes, slider_bytes: bytes) -> int:
-    """Use ddddocr to find slider gap X coordinate.
-    Returns the X in display (rendered) coordinates.
-    The verify field `x` is the drag distance, which equals gap_x minus the
-    slider piece's left edge in the bg. ddddocr's `target[0]` is the gap's
-    left edge in the bg image's native pixels."""
-    import ddddocr  # type: ignore
-    from PIL import Image
+    """Edge-based template match. Avoids decoy-shape confusion that ddddocr
+    suffers on 顶象 captchas with two similar shapes."""
+    import cv2
+    import numpy as np
+    from PIL import Image as _Image
 
-    bg_img = Image.open(BytesIO(bg_bytes))
-    bg_w = bg_img.size[0]
-    sl_img = Image.open(BytesIO(slider_bytes))
-    sl_w = sl_img.size[0]
+    bg_arr = cv2.imdecode(np.frombuffer(bg_bytes, np.uint8), cv2.IMREAD_COLOR)
+    bg_w = bg_arr.shape[1]
 
-    ocr = ddddocr.DdddOcr(show_ad=False)
-    result = ocr.slide_match(slider_bytes, bg_bytes, simple_target=True)
-    if isinstance(result, dict):
-        target = result.get("target")
-        gap_x = None
-        if isinstance(target, (list, tuple)) and target:
-            gap_x = target[0]
-        elif "x" in result:
-            gap_x = result["x"]
-        if gap_x is not None:
-            # /api/v1 expects the drag distance in DISPLAY (300px) coords.
-            # bg image is 400px wide natively → scale gap_x to display.
-            x_display = gap_x * 300.0 / bg_w
-            print(f"[ocr] bg_w={bg_w} sl_w={sl_w} gap_x_native={gap_x} x_display={x_display:.1f}")
-            return int(round(x_display))
-    raise RuntimeError(f"ddddocr unexpected output: {result!r}")
+    sl_pil = _Image.open(BytesIO(slider_bytes)).convert("RGBA")
+    bbox = sl_pil.split()[-1].getbbox()
+    sl_cropped = sl_pil.crop(bbox) if bbox else sl_pil
+    sl_arr = np.array(sl_cropped)
+    sl_rgb = cv2.cvtColor(sl_arr[:, :, :3], cv2.COLOR_RGB2BGR)
+
+    bg_edge = cv2.Canny(cv2.cvtColor(bg_arr, cv2.COLOR_BGR2GRAY), 100, 200)
+    sl_edge = cv2.Canny(cv2.cvtColor(sl_rgb, cv2.COLOR_BGR2GRAY), 100, 200)
+
+    res = cv2.matchTemplate(bg_edge, sl_edge, cv2.TM_CCOEFF_NORMED)
+    _, _, _, max_loc = cv2.minMaxLoc(res)
+    gap_native_x = max_loc[0]
+    display_x = int(round(gap_native_x * 300.0 / bg_w))
+    print(f"[edge] bg_w={bg_w} gap_native={gap_native_x} display_x={display_x}")
+    return display_x
 
 
 def _ease_distance(distance: int, steps: int) -> List[int]:
@@ -313,19 +308,24 @@ def run_once() -> Dict[str, object]:
 
 
 def main() -> None:
-    for attempt in range(3):
-        print(f"\n=== Attempt {attempt + 1} ===")
-        out = run_once()
-        print("[result]")
-        for k, v in out.items():
-            s = repr(v)
-            if len(s) > 200:
-                s = s[:200] + "..."
-            print(f"  {k}: {s}")
+    success_count = 0
+    fail_msgs = []
+    for attempt in range(8):
+        try:
+            out = run_once()
+        except Exception as e:
+            print(f"run {attempt+1}: ERR {e}")
+            continue
         if out.get("token"):
-            print("\n通过 ✓")
-            return
-    print("\n失败 ✗")
+            success_count += 1
+            print(f"run {attempt+1}: ✓ SUCCESS  target_x={out.get('target_x')}")
+        else:
+            fail = out.get("fail", {})
+            msg = fail.get("message", "?") if isinstance(fail, dict) else "?"
+            fail_msgs.append(msg)
+            print(f"run {attempt+1}: ✗ {msg}  target_x={out.get('target_x')}")
+    print(f"\nSuccess: {success_count}/8")
+    print(f"Fail msgs: {fail_msgs}")
 
 
 if __name__ == "__main__":
