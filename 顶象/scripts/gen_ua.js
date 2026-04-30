@@ -62,9 +62,11 @@ function buildEnv(opts) {
     '<style>' + 'a'.repeat(5000) + '</style>' +
     // pad head to typical size (~100KB)
     '<script>/*' + 'h'.repeat(95000) + '*/</script>';
+  const headContent = opts.realHead || defaultHead;
+  const bodyContent = opts.realBody || defaultBody;
   const html = opts.html ||
-    '<!DOCTYPE html><html><head>' + defaultHead + '</head>' +
-    '<body>' + defaultBody + '</body></html>';
+    '<!DOCTYPE html><html><head>' + headContent + '</head>' +
+    '<body>' + bodyContent + '</body></html>';
   const virtualConsole = new VirtualConsole();
   // suppress jsdom's noisy logs
   virtualConsole.on('jsdomError', () => {});
@@ -120,7 +122,10 @@ function buildEnv(opts) {
 }
 
 async function generate(spec) {
-  const { dom, win, factory } = buildEnv(spec.env || {});
+  const env = Object.assign({}, spec.env || {});
+  if (spec.realBody) env.realBody = spec.realBody;
+  if (spec.realHead) env.realHead = spec.realHead;
+  const { dom, win, factory } = buildEnv(env);
   // Anchor the simulator clock at spec.startTime so that elapsed timestamps
   // baked into segments resemble what a real user produces (init -> several
   // hundred ms before first mousedown).

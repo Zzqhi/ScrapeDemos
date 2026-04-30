@@ -69,13 +69,28 @@ def build_drag_events(points: List[Dict[str, int]], step_ms: int = 16,
     return events
 
 
+REAL_BODY_PATH = "/tmp/dx_compare/real_body.html"
+REAL_HEAD_PATH = "/tmp/dx_compare/real_head.html"
+
+
 def gen_ua_via_sidecar(token: str, events: List[Dict[str, Any]], start_time_ms: int,
                        pre_init_ms: int = 800) -> str:
+    # Load real captcha-ui DOM if cached.
+    real_body = real_head = None
+    if os.path.exists(REAL_BODY_PATH):
+        with open(REAL_BODY_PATH) as f:
+            real_body = f.read()
+    if os.path.exists(REAL_HEAD_PATH):
+        with open(REAL_HEAD_PATH) as f:
+            real_head = f.read()
+
     spec = {
         "token": token,
         "events": events,
         "startTime": start_time_ms,
         "preInitMs": pre_init_ms,
+        "realBody": real_body,
+        "realHead": real_head,
         "env": {
             "userAgent": (
                 "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
