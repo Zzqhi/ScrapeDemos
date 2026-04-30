@@ -50,9 +50,9 @@ def build_drag_events(points: List[Dict[str, int]], step_ms: int = 16,
     # Drag-start MM with full target id.
     events.append({"kind": "mm", "x": first["x"], "y": first["y"], "targetId": target_full,
                    "dt": random.randint(20, 80)})
-    # SA samples for the trajectory (real flow had ~60).
+    # SA samples for the trajectory with HUMAN-LIKE variable timing.
     for pt in points[1:]:
-        events.append({"kind": "sa", "x": pt["x"], "y": pt["y"], "dt": step_ms})
+        events.append({"kind": "sa", "x": pt["x"], "y": pt["y"], "dt": human_step_dt()})
     # Flush SAs.
     events.append({"kind": "sendSA", "dt": random.randint(50, 120)})
     # sendTemp — must include xpath/x/y/isTrusted exactly like real flow.
@@ -371,54 +371,84 @@ def generate_drag_points(
     min_steps: int = 50,
     max_steps: int = 80,
 ) -> List[Dict[str, int]]:
+    """Generate human-like drag trajectory with overshoot+return.
+
+    Modeled after captured real slides which had:
+      * Variable inter-step delay (8-180ms) — speed bursts then pauses
+      * Cubic acceleration / cruise / deceleration phases
+      * Overshoot past target by 5-15 px
+      * Brief pause at peak (50-200ms)
+      * Slow return back by 5-15 px to land on target
+      * Y jitter ±1-2 px throughout
+    """
     distance = max(0, int(target_x) - int(start_x))
     start_x = int(start_x)
     y = int(y)
-
     if distance <= 0:
         return [{"x": start_x, "y": y}]
 
-    steps = max(min_steps, min(max_steps, int(distance * 0.8)))
-    acc_steps = max(4, int(steps * 0.30))
-    cruise_steps = max(4, int(steps * 0.40))
-    dec_steps = max(4, steps - acc_steps - cruise_steps)
-    total_steps = acc_steps + cruise_steps + dec_steps
-
-    # 分段速度模型：加速 -> 匀速 -> 减速，并叠加少量随机抖动。
-    pos = float(start_x)
-    speed = 0.0
     points: List[Dict[str, int]] = [{"x": start_x, "y": y}]
 
-    for i in range(total_steps):
-        if i < acc_steps:
-            speed += random.uniform(0.8, 1.8)
-        elif i < acc_steps + cruise_steps:
-            speed += random.uniform(-0.2, 0.25)
-        else:
-            speed -= random.uniform(0.7, 1.5)
+    # === PHASE 1: forward swing past target (overshoot 4-12 px) ===
+    overshoot = random.randint(4, 12)
+    peak_x = target_x + overshoot
 
-        speed = max(0.35, speed)
-        move = speed + random.uniform(-0.15, 0.15)
-        pos += max(0.2, move)
+    # cubic ease-in-out for forward phase
+    forward_steps = random.randint(35, 55)
+    for i in range(1, forward_steps + 1):
+        t = i / forward_steps
+        # ease-in-out cubic
+        eased = 4 * t**3 if t < 0.5 else 1 - ((-2 * t + 2) ** 3) / 2
+        x = start_x + eased * (peak_x - start_x)
+        # micro-jitter from neuro-muscular noise
+        x += random.uniform(-0.4, 0.4)
+        jitter_y = y + random.choice([0, 0, 0, 0, 1, -1, 1, -1, 2, -2])
+        points.append({"x": int(round(x)), "y": int(jitter_y)})
 
-        progress = (pos - start_x) / distance
-        if progress > 1:
-            pos = float(target_x)
+    # Make sure peak reached
+    if points[-1]["x"] < peak_x:
+        points.append({"x": peak_x, "y": y + random.choice([0, 1, -1])})
 
+    # === PHASE 2: brief pause at peak (just no movement, but emit a few duplicated samples) ===
+    pause_samples = random.randint(0, 2)
+    for _ in range(pause_samples):
+        points.append({"x": peak_x, "y": y + random.choice([0, 1, -1])})
+
+    # === PHASE 3: slow return from peak back to target ===
+    return_steps = random.randint(4, 10)
+    for i in range(1, return_steps + 1):
+        t = i / return_steps
+        # ease-out for return (slow down as approaching target)
+        eased = 1 - (1 - t) ** 2
+        x = peak_x - eased * (peak_x - target_x)
+        x += random.uniform(-0.3, 0.3)
         jitter_y = y + random.choice([0, 0, 0, 1, -1])
-        points.append({"x": int(round(pos)), "y": int(jitter_y)})
+        points.append({"x": int(round(x)), "y": int(jitter_y)})
 
-        if int(round(pos)) >= target_x:
-            break
-
-    if points[-1]["x"] != target_x:
-        points.append({"x": int(target_x), "y": int(y + random.choice([0, 1, -1]))})
-
-    settle_points = random.randint(1, 3)
-    for _ in range(settle_points):
-        points.append({"x": int(target_x), "y": int(y + random.choice([0, 0, 1, -1]))})
+    # === PHASE 4: settle (1-3 samples at target) ===
+    settle = random.randint(1, 3)
+    for _ in range(settle):
+        points.append({"x": target_x, "y": y + random.choice([0, 0, 1, -1])})
 
     return points
+
+
+def human_step_dt() -> int:
+    """Sample inter-step dt with realistic distribution.
+
+    Real captures had:
+      * Most dt = 10-25 ms (~70% of samples)
+      * Occasional 30-80 ms (cruise breath)
+      * Rare 100-200 ms pauses (thinking)
+    """
+    r = random.random()
+    if r < 0.70:
+        return random.randint(10, 25)
+    if r < 0.92:
+        return random.randint(28, 70)
+    if r < 0.98:
+        return random.randint(80, 150)
+    return random.randint(150, 220)
 
 
 def verify_captcha(ac, ak, sid, aid, x, y, c="", jsv="1.5.46.2"):
