@@ -99,9 +99,10 @@ URL-decoded:
 | greenseer 自动同步 | ✅ 30min TTL |
 | 加密字节级正确性 | ✅ 9/9 匹配 (差分对照通过) |
 | `tm` 锚定 | ✅ 已修, preInitMs ≈ 80s |
-| 段结构(顺序/数量) | ⚠️ 部分对齐, sendTemp 内容不全 |
-| /api/v1 通过 | ❌ 仍 `error` (因 sendTemp 内容差) |
-| **Playwright 路线** | ✅ 已突破到 `retry`, 卡 ddddocr 精度 |
+| 段结构(顺序/数量) | ✅ 对齐真实流 (hover MM → drag MM → 60×SA → sendTemp → release MM) |
+| sendTemp 内容 | ✅ 含 xpath/x/y/isTrusted, jsdom body 填充到 50KB |
+| **/api/v1 协议层** | ✅ **error → retry** (sidecar 与 Playwright 同等水平) |
+| /api/v1 token | ❌ 仍 retry, 卡 ddddocr X 精度 (CV 问题, 与协议无关) |
 
 ## 5. 推荐路径
 

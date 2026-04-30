@@ -30,36 +30,42 @@ GEN_UA_HELPER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "script
 VERIFY_URL = "https://cap.dingxiang-inc.com/api/v1"
 
 
-def build_drag_events(points: List[Dict[str, int]], step_ms: int = 16) -> List[Dict[str, Any]]:
-    """Translate trajectory points into a greenseer event sequence matching the
-    captured live flow:
-      [hover MM(target='')] [drag-start MM(full target)] [MD(target='')]
+def build_drag_events(points: List[Dict[str, int]], step_ms: int = 16,
+                      verify_x: int = 0, verify_y: int = 0) -> List[Dict[str, Any]]:
+    """Mirror today's captured real flow:
+      [hover MM(no target)] [drag-start MM(full target)]
       ... many recordSA ...
-      ... a few drag MMs throughout ...
-      [sendSA] [sendTemp]
+      [sendSA] [sendTemp{xpath,x,y,isTrusted}] [release MM]
+    NO MD — basic-Captcha's slider doesn't call getMD.
     """
     if not points:
         return []
     events: List[Dict[str, Any]] = []
-    target_full = "dx_captcha_basic_slider-img-focus_1"  # real id observed in trace
+    target_full = "dx_captcha_basic_slider-img-focus_1"
     first = points[0]
 
-    # Hover MM: 10 bytes (no target id)
-    events.append({"kind": "mm", "x": first["x"], "y": first["y"], "targetId": "", "dt": random.randint(80, 160)})
-    # Drag-start MM with full target id (-> ~46 bytes)
-    events.append({"kind": "mm", "x": first["x"], "y": first["y"], "targetId": target_full, "dt": random.randint(20, 50)})
-    # MD with empty target (-> 11 bytes; auto-fires DI right after)
-    events.append({"kind": "md", "x": first["x"], "y": first["y"], "targetId": "", "button": 0, "dt": random.randint(30, 80)})
-
-    # Drag: SA samples per point. Insert a MM every ~25 SAs to match real flow
-    # which logged 3-4 MM segments over the entire drag.
-    for idx, pt in enumerate(points[1:]):
+    # Hover MM (no target) — fires before drag.
+    events.append({"kind": "mm", "x": first["x"], "y": first["y"], "targetId": "",
+                   "dt": random.randint(800, 1500)})
+    # Drag-start MM with full target id.
+    events.append({"kind": "mm", "x": first["x"], "y": first["y"], "targetId": target_full,
+                   "dt": random.randint(20, 80)})
+    # SA samples for the trajectory (real flow had ~60).
+    for pt in points[1:]:
         events.append({"kind": "sa", "x": pt["x"], "y": pt["y"], "dt": step_ms})
-        if idx > 0 and idx % 25 == 0:
-            events.append({"kind": "mm", "x": pt["x"], "y": pt["y"], "targetId": target_full, "dt": 0})
-
-    events.append({"kind": "sendSA", "dt": 0})
-    events.append({"kind": "temp", "body": {"title": "captcha", "bodyLength": 100}, "dt": random.randint(20, 80)})
+    # Flush SAs.
+    events.append({"kind": "sendSA", "dt": random.randint(50, 120)})
+    # sendTemp — must include xpath/x/y/isTrusted exactly like real flow.
+    events.append({"kind": "temp", "body": {
+        "xpath": "/html/body/div",
+        "x": verify_x or points[-1]["x"],
+        "y": verify_y or points[-1]["y"],
+        "isTrusted": True,
+    }, "dt": random.randint(10, 40)})
+    # Release MM after sendTemp (real flow has a final MM at dt~3311).
+    last = points[-1]
+    events.append({"kind": "mm", "x": last["x"], "y": last["y"], "targetId": "",
+                   "dt": random.randint(50, 150)})
     return events
 
 
@@ -469,7 +475,7 @@ def run_once() -> Dict[str, Any]:
     start_y = int(config.get("y", 0))
     points = generate_drag_points(start_x=0, target_x=target_x, y=start_y)
     step_ms = random.randint(14, 22)
-    events = build_drag_events(points, step_ms=step_ms)
+    events = build_drag_events(points, step_ms=step_ms, verify_x=target_x, verify_y=start_y)
     start_time_ms = int(time.time() * 1000) - random.randint(900, 1800)
     # Real flow: greenseer is loaded ~80 seconds before user starts sliding.
     # Sidecar must mirror that elapsed window so encrypted timestamps match

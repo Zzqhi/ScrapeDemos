@@ -41,8 +41,30 @@ function buildEnv(opts) {
     'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 ' +
     '(KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36';
 
-  const html = '<!DOCTYPE html><html><head><title>captcha</title></head>' +
-    '<body><div id="captcha"></div></body></html>';
+  // sendTemp captures document.body.innerHTML.substr(0, ~300) as 'fragment'
+  // and reports bodyLength/headLength. The host DOM must look like a real
+  // page that embeds the captcha widget — otherwise server rejects.
+  // Caller can override via opts.html with a full HTML string.
+  const defaultBody =
+    '<h3>DingXiang slider</h3>' +
+    '<div id="captcha" class="dx_captcha dx_captcha_loading-style-embed ' +
+    'dx_captcha_basic dx_captcha-type-basic dx_captcha_basic-style-embed" ' +
+    'style="width: 300px; height: 200px;" data-dx-idx="1">' +
+    '<div id="dx_captcha_basic_wrapper_1" class="dx_captcha_basic_wrapper">' +
+    '<!-- captcha placeholder content padded to plausible length -->' +
+    '<div class="dx_captcha_basic_state-box"></div>' +
+    '<div class="dx_captcha_basic_bg"></div>' +
+    '<div class="dx_captcha_basic_inform"></div>' +
+    '</div></div>' +
+    // pad to typical real-page body size (~50KB)
+    '<div style="display:none">' + 'x'.repeat(48000) + '</div>';
+  const defaultHead = '<title>captcha</title>' +
+    '<style>' + 'a'.repeat(5000) + '</style>' +
+    // pad head to typical size (~100KB)
+    '<script>/*' + 'h'.repeat(95000) + '*/</script>';
+  const html = opts.html ||
+    '<!DOCTYPE html><html><head>' + defaultHead + '</head>' +
+    '<body>' + defaultBody + '</body></html>';
   const virtualConsole = new VirtualConsole();
   // suppress jsdom's noisy logs
   virtualConsole.on('jsdomError', () => {});
