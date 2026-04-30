@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>顶象滑块验证码 - 控制变量调试</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:#f5f5f5;padding:20px}
+h1{font-size:18px;margin-bottom:16px;color:#333}
+.container{display:flex;gap:16px;flex-wrap:wrap}
+.panel{background:#fff;border-radius:8px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.1);margin-bottom:16px}
+.panel h2{font-size:14px;color:#666;margin-bottom:12px;border-bottom:1px solid #eee;padding-bottom:8px}
+#log-panel{width:700px;max-height:60vh;overflow-y:auto}
+#log{font-family:"JetBrains Mono","Fira Code",monospace;font-size:11.5px;line-height:1.6;white-space:pre-wrap;word-break:break-all;color:#333}
+.log-req{color:#0066cc}.log-resp{color:#009933}.log-err{color:#cc0000}
+.log-info{color:#666}.log-warn{color:#cc6600}.log-key{color:#d63384;font-weight:bold}
+.log-intercept{color:#9333ea;font-weight:bold}
+.toolbar{margin-bottom:16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.toolbar button,.intercept-panel button{padding:6px 16px;border:1px solid #ddd;border-radius:4px;background:#fff;cursor:pointer;font-size:13px}
+.toolbar button:hover,.intercept-panel button:hover{background:#f0f0f0}
+.toolbar button.primary{background:#1890ff;color:#fff;border-color:#1890ff}
+.toolbar button.success{background:#52c41a;color:#fff;border-color:#52c41a}
+.toolbar button.danger{background:#ff4d4f;color:#fff;border-color:#ff4d4f}
+.toolbar button.purple{background:#9333ea;color:#fff;border-color:#9333ea}
+#status{font-size:13px;color:#999;margin-left:8px}
+#stats{font-size:13px;margin-left:8px;font-weight:bold}
+.collapsible{cursor:pointer;user-select:none}
+.collapsible::before{content:"\25b8 "}
+.collapsible.open::before{content:"\25be "}
+.collapse-body{display:none;margin-left:16px;background:#f8f8f8;padding:6px 8px;border-radius:4px;margin-top:2px;margin-bottom:4px}
+.collapse-body.show{display:block}
+.intercept-panel{display:none;background:#faf5ff;border:2px solid #9333ea;border-radius:8px;padding:16px;margin-bottom:16px}
+.intercept-panel h2{color:#9333ea;border-bottom-color:#d8b4fe}
+.intercept-panel .btn-row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.intercept-panel button.browser{background:#52c41a;color:#fff;border-color:#52c41a}
+.intercept-panel button.sidecar{background:#9333ea;color:#fff;border-color:#9333ea}
+.intercept-panel button:disabled{opacity:0.5;cursor:not-allowed}
+.result-compare{display:flex;gap:12px;margin-top:12px}
+.result-compare .col{flex:1;padding:10px;border-radius:6px;font-size:12px;font-family:monospace;white-space:pre-wrap;word-break:break-all;max-height:200px;overflow:auto}
+.result-compare .col-browser{background:#f0fdf4;border:1px solid #86efac}
+.result-compare .col-sidecar{background:#faf5ff;border:1px solid #d8b4fe}
+.mode-toggle{display:flex;align-items:center;gap:6px;padding:4px 12px;border-radius:4px;background:#faf5ff;border:1px solid #d8b4fe}
+.mode-toggle input{accent-color:#9333ea}
+.mode-toggle label{font-size:13px;cursor:pointer;color:#9333ea;font-weight:bold}
+#mouse-info{font-size:11px;color:#999;margin-top:4px}
+</style>
+
+<!-- ██ 清除 dingxiang 缓存 ██ -->
+<script>
+(function(){
+  ['localStorage','sessionStorage'].forEach(function(s){
+    try{
+      var st=window[s]; if(!st)return;
+      var toRemove=[];
+      for(var i=0;i<st.length;i++){
+        var k=st.key(i);
+        if(/dx|dingxiang|constid|captcha|udid|greenseer/i.test(k)) toRemove.push(k);
+      }
+      toRemove.forEach(function(k){ st.removeItem(k); });
+    }catch(e){}
+  });
+  document.cookie.split(';').forEach(function(c){
+    var k=c.split('=')[0].trim();
+    if(/dx|dingxiang|constid|captcha|udid/i.test(k))
+      document.cookie=k+'=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
+  });
+})();
+</script>
+
+<!-- ██ XHR hook + 拦截模式 ██ -->
+<script>
+(function(){
+  window.__dx = {
+    requests:[], loadResp:null, verifyReq:null, verifyResp:null,
+    token:null, history:[], mouseEvents:[], interceptMode:false,
+    pendingV1: null,  // {xhr, body, params, url} when intercepted
+  };
+
+  var _li = 0;
+  window._log = function(c,t){
+    var el=document.getElementById('log');if(!el)return;
+    var d=document.createElement('div');d.className='log-'+c;
+    d.textContent='['+(++_li).toString().padStart(3,'0')+'] '+new Date().toISOString().slice(11,23)+'  '+t;
+    el.appendChild(d);el.parentElement.scrollTop=el.parentElement.scrollHeight;
+  };
+  window._logK = function(l,v){ _log('key','\u2605 '+l+' = '+v); };
+  window._logC = function(c,s,detail){
+    var el=document.getElementById('log');if(!el)return;
+    var h=document.createElement('div');h.className='collapsible log-'+c;
+    h.textContent='['+(++_li).toString().padStart(3,'0')+'] '+new Date().toISOString().slice(11,23)+'  '+s;
+    h.onclick=function(){this.classList.toggle('open');this.nextElementSibling.classList.toggle('show')};
+    var b=document.createElement('div');b.className='collapse-body';
+    b.textContent=typeof detail==='string'?detail:JSON.stringify(detail,null,2);
+    el.appendChild(h);el.appendChild(b);el.parentElement.scrollTop=el.parentElement.scrollHeight;
+  };
+
+  // XHR 拦截
+  var oOpen=XMLHttpRequest.prototype.open, oSend=XMLHttpRequest.prototype.send;
+  XMLHttpRequest.prototype.open=function(m,u){this.__m=m;this.__u=u;return oOpen.apply(this,arguments)};
+  XMLHttpRequest.prototype.send=function(body){
+    var m=this.__m||'GET',u=this.__u||'';
+    if(u.indexOf('dingxiang')===-1&&u.indexOf('constid')===-1)return oSend.apply(this,arguments);
+
+    var isLoad=u.indexOf('/api/a')!==-1&&u.indexOf('/api/v')===-1;
+    var isV1=u.indexOf('/api/v1')!==-1;
+    var isV2=u.indexOf('/api/v2')!==-1;
+    var isV3=u.indexOf('/api/v3')!==-1;
+    var isVerify=isV1||isV2||isV3;
+    var vLabel=isV1?'v1':isV2?'v2 (clickword)':isV3?'v3 (icon-click)':'';
+
+    if(isLoad) _log('req','-> GET /api/a');
+    else if(isVerify) _log('req','-> POST /api/'+vLabel);
+    else _log('req','-> '+m+' '+u.substring(0,80));
+
+    // 解析 verify POST body
+    var pa=null;
+    if(body&&typeof body==='string'&&isVerify){
+      try{
+        var ps=new URLSearchParams(body);pa={};
+        for(var p of ps) pa[p[0]]=p[1];
+        if(isV1) window.__dx.verifyReq=pa;
+        else window.__dx.secondaryReq=pa;
+        _logK('sid',pa.sid||'');
+        if(pa.x!=null) _logK('x',pa.x);
+        if(pa.y!=null) _logK('y',pa.y);
+        _logK('ac 长度',(pa.ac||'').length);
+        if(pa.c) _logK('c 长度',pa.c.length);
+        _logC('req',vLabel+' POST body (ac 省略)',Object.assign({},pa,{ac:'[len='+(pa.ac||'').length+']'}));
+      }catch(e){}
+    }
+
+    // ██ 拦截模式: 阻止 /api/v1 发出 ██
+    if(isV1 && window.__dx.interceptMode && pa){
+      _log('intercept','██ 已拦截 /api/v1 请求 — 等待手动操作 ██');
+      window.__dx.pendingV1 = {
+        xhr: this, body: body, params: pa, url: u,
+        mouseEvents: window.__dx.mouseEvents.slice(),
+      };
+      window._showInterceptPanel(pa);
+      return; // 不发送!
+    }
+
+    // 响应处理
+    var self=this;
+    this.addEventListener('load',function(){
+      var resp=self.responseText||'';
+      if(resp.charAt(0)!=='{')return;
+      try{
+        var j=JSON.parse(resp);
+        if(isLoad){
+          window.__dx.loadResp=j;
+          if(j.sid) _logK('sid',j.sid);
+          if(j.y!=null) _logK('y',j.y);
+          _logC('resp','/api/a',j);
+        } else if(isV1){
+          window.__dx.verifyResp=j;
+          _logK('success',j.success);
+          if(j.msg) _logK('msg',j.msg);
+          if(j.token){ _logK('token',j.token.substring(0,40)+'...'); window.__dx.token=j.token; }
+          if(j.sv){
+            _logK('二次验证 type',j.sv.type);
+            if(j.sv.cw) _logK('cw',j.sv.cw);
+            window.__dx.svData=j.sv;
+          }
+          _logC('resp','/api/v1',j);
+        } else if(isV2||isV3){
+          window.__dx.secondaryResp=j;
+          _logK(vLabel+' success',j.success);
+          _logC('resp','/api/'+vLabel,j);
+        } else {
+          _logC('resp','其他',j);
+        }
+      }catch(e){}
+    });
+
+    window.__dx.requests.push({method:m,url:u,body:typeof body==='string'?body:null,ts:Date.now()});
+    return oSend.apply(this,arguments);
+  };
+})();
+</script>
+
+<!-- ██ 鼠标轨迹采集 ██ -->
+<script>
+(function(){
+  var tracking=false, startTime=0;
+  document.addEventListener('mousedown',function(e){
+    // 检测是否点在滑块区域
+    var t=e.target;
+    if(!t) return;
+    var cl=(t.className||'')+(t.id||'');
+    var parent=t.parentElement;
+    while(parent && parent!==document.body){
+      cl+=' '+(parent.className||'')+(parent.id||'');
+      parent=parent.parentElement;
+    }
+    if(cl.indexOf('captcha')===-1 && cl.indexOf('slider')===-1) return;
+    tracking=true;
+    startTime=Date.now();
+    window.__dx.mouseEvents=[];
+    window.__dx.mouseEvents.push({type:'mousedown',x:e.clientX,y:e.clientY,dt:0});
+  },true);
+
+  document.addEventListener('mousemove',function(e){
+    if(!tracking) return;
+    window.__dx.mouseEvents.push({type:'mousemove',x:e.clientX,y:e.clientY,dt:Date.now()-startTime});
+  },true);
+
+  document.addEventListener('mouseup',function(e){
+    if(!tracking) return;
+    window.__dx.mouseEvents.push({type:'mouseup',x:e.clientX,y:e.clientY,dt:Date.now()-startTime});
+    tracking=false;
+    var el=document.getElementById('mouse-info');
+    if(el) el.textContent='轨迹采集: '+window.__dx.mouseEvents.length+' 个事件, 耗时 '+(Date.now()-startTime)+'ms';
+  },true);
+})();
+</script>
+
+<script src="https://cdn.dingxiang-inc.com/ctu-group/captcha-ui/index.js"></script>
+</head>
+<body>
+
+<h1>顶象滑块验证码 - 控制变量调试</h1>
+<div class="toolbar">
+  <button class="primary" onclick="createCaptcha()">初始化</button>
+  <button onclick="createCaptcha()">刷新</button>
+  <button onclick="document.getElementById('log').innerHTML=''">清空日志</button>
+  <button class="success" onclick="exportSnap()">导出快照</button>
+  <span class="mode-toggle">
+    <input type="checkbox" id="intercept-toggle" onchange="window.__dx.interceptMode=this.checked;_log('info','拦截模式: '+(this.checked?'ON':'OFF'))">
+    <label for="intercept-toggle">拦截 /api/v1</label>
+  </span>
+  <span id="status">-</span>
+  <span id="stats"></span>
+</div>
+
+<!-- 拦截控制面板 -->
+<div class="intercept-panel" id="intercept-panel">
+  <h2>已拦截 /api/v1 请求</h2>
+  <div id="intercept-info" style="font-size:12px;font-family:monospace;margin-bottom:8px"></div>
+  <div class="btn-row">
+    <button class="browser" onclick="sendBrowserAC()">放行浏览器 AC</button>
+    <button class="sidecar" onclick="sendSidecarAC()">用 Sidecar AC 替换提交</button>
+    <button class="danger" onclick="sendBothCompare()">A/B 对比 (两个都发)</button>
+    <button class="purple" onclick="exportACPair()">导出 AC 对比 JSON</button>
+    <button onclick="cancelIntercept()">取消</button>
+  </div>
+  <div class="result-compare" id="compare-results" style="display:none">
+    <div class="col col-browser"><strong>浏览器 AC 结果:</strong><br><span id="res-browser">-</span></div>
+    <div class="col col-sidecar"><strong>Sidecar AC 结果:</strong><br><span id="res-sidecar">-</span></div>
+  </div>
+</div>
+
+<div class="container">
+  <div class="panel" style="min-width:380px">
+    <h2>验证码</h2>
+    <div id="captcha-box"></div>
+    <div id="result" style="margin-top:12px;font-size:13px"></div>
+    <div id="mouse-info"></div>
+  </div>
+  <div class="panel" id="log-panel"><h2>日志</h2><div id="log"></div></div>
+</div>
+
+<script>
+var APP_KEY = '12610a3853150e888ccd0c6d4c415626';
+var SIDECAR_API = 'http://localhost:8902';
+var stats = {total:0, success:0, secondary:0, retry:0, error:0};
+
+function setS(t,c){ document.getElementById('status').textContent=t; document.getElementById('status').style.color=c||'#999'; }
+function updStats(){
+  document.getElementById('stats').innerHTML=
+    '<span style="color:#52c41a">'+stats.success+' pass</span> / '+
+    '<span style="color:#cc6600">'+stats.secondary+' 2fa</span> / '+
+    '<span style="color:#ff4d4f">'+stats.retry+' retry</span> / '+
+    stats.total+' total';
+}
+
+// ═══ 拦截面板 ═══
+window._showInterceptPanel = function(params){
+  var panel=document.getElementById('intercept-panel');
+  panel.style.display='block';
+  document.getElementById('compare-results').style.display='none';
+  document.getElementById('intercept-info').innerHTML=
+    'sid: '+params.sid+'<br>'+
+    'x: '+params.x+', y: '+params.y+'<br>'+
+    'ac 长度: '+(params.ac||'').length+'<br>'+
+    'c 长度: '+(params.c||'').length+'<br>'+
+    'jsv: '+params.jsv+'<br>'+
+    '鼠标事件: '+window.__dx.mouseEvents.length+' 个';
+};
+
+function hideInterceptPanel(){ document.getElementById('intercept-panel').style.display='none'; }
+
+// 放行浏览器原始请求
+function sendBrowserAC(){
+  var pending=window.__dx.pendingV1;
+  if(!pending){ _log('err','无待处理请求'); return; }
+  _log('intercept','放行浏览器 AC...');
+  submitToV1(pending.params, 'browser');
+  hideInterceptPanel();
+}
+
+// 用 sidecar 生成 AC 后提交
+function sendSidecarAC(){
+  var pending=window.__dx.pendingV1;
+  if(!pending){ _log('err','无待处理请求'); return; }
+  _log('intercept','调用 Sidecar 生成 AC...');
+  callSidecar(pending.params, pending.mouseEvents, function(newAC){
+    var p=Object.assign({},pending.params,{ac:newAC});
+    submitToV1(p, 'sidecar');
+    hideInterceptPanel();
+  });
+}
+
+// A/B 对比
+function sendBothCompare(){
+  var pending=window.__dx.pendingV1;
+  if(!pending){ _log('err','无待处理请求'); return; }
+  document.getElementById('compare-results').style.display='flex';
+  document.getElementById('res-browser').textContent='请求中...';
+  document.getElementById('res-sidecar').textContent='请求中...';
+  _log('intercept','A/B 对比: 同时发送浏览器 AC 和 Sidecar AC');
+
+  // A: 浏览器 AC
+  submitToV1(pending.params, 'browser', function(resp){
+    var txt=JSON.stringify(resp,null,2);
+    document.getElementById('res-browser').textContent=txt;
+    _logC('resp','[A] 浏览器 AC 结果',resp);
+  });
+
+  // B: Sidecar AC
+  callSidecar(pending.params, pending.mouseEvents, function(newAC){
+    var p=Object.assign({},pending.params,{ac:newAC});
+    submitToV1(p, 'sidecar', function(resp){
+      var txt=JSON.stringify(resp,null,2);
+      document.getElementById('res-sidecar').textContent=txt;
+      _logC('resp','[B] Sidecar AC 结果',resp);
+    });
+  });
+}
+
+function cancelIntercept(){
+  window.__dx.pendingV1=null;
+  hideInterceptPanel();
+  _log('info','已取消拦截');
+}
+
+// 直接提交 /api/v1 (绕过 XHR hook)
+function submitToV1(params, label, cb){
+  var body=new URLSearchParams(params).toString();
+  _log('intercept','['+label+'] 提交 /api/v1, ac 长度='+(params.ac||'').length);
+  fetch('https://cap.dingxiang-inc.com/api/v1',{
+    method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body:body
+  }).then(function(r){return r.json()}).then(function(j){
+    _logK(label+' success',j.success);
+    if(j.msg) _logK(label+' msg',j.msg);
+    if(j.token) _logK(label+' token',j.token.substring(0,40)+'...');
+    if(j.sv) _logK(label+' 二次验证 type',j.sv.type);
+    if(cb) cb(j);
+  }).catch(function(e){
+    _log('err','['+label+'] 请求失败: '+e);
+    if(cb) cb({error:e.toString()});
+  });
+}
+
+// 调用本地 sidecar API
+function callSidecar(params, mouseEvents, cb){
+  var payload={
+    sid: params.sid,
+    x: parseInt(params.x)||0,
+    y: parseInt(params.y)||0,
+    c: params.c||'',
+    ak: params.ak||APP_KEY,
+    aid: params.aid||'',
+    jsv: params.jsv||'',
+    browserAC: params.ac||'',
+    mouseEvents: mouseEvents||[],
+    env: {
+      userAgent: navigator.userAgent,
+      platform: navigator.platform,
+      screenW: screen.width,
+      screenH: screen.height,
+      availW: screen.availWidth,
+      availH: screen.availHeight,
+      innerW: innerWidth,
+      innerH: innerHeight,
+      outerW: outerWidth,
+      outerH: outerHeight,
+      colorDepth: screen.colorDepth,
+      href: location.href,
+      referrer: document.referrer,
+    }
+  };
+  _log('intercept','POST '+SIDECAR_API+'/gen-ac, 事件数='+mouseEvents.length);
+  fetch(SIDECAR_API+'/gen-ac',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(payload)
+  }).then(function(r){return r.json()}).then(function(j){
+    if(j.error){ _log('err','Sidecar 错误: '+j.error); return; }
+    _logK('sidecar ac 长度',j.ac_length);
+    _logK('browser ac 长度',(params.ac||'').length);
+    window.__dx.lastSidecarAC=j.ac;
+    cb(j.ac);
+  }).catch(function(e){
+    _log('err','Sidecar 连接失败: '+e+' (确认 python sidecar_api.py 在运行)');
+  });
+}
+
+// 导出两个 AC 对比 JSON (供 decode_ac.py --json 分析)
+function exportACPair(){
+  var pending=window.__dx.pendingV1;
+  var browserAC=pending?pending.params.ac:'';
+  if(!browserAC){ _log('err','无浏览器 AC'); return; }
+
+  // 如果已有 sidecar AC 直接导出，否则先生成再导出
+  function doExport(sidecarAC){
+    var data={
+      _ts:new Date().toISOString(),
+      browserAC:browserAC,
+      sidecarAC:sidecarAC||'',
+      params:pending?Object.assign({},pending.params,{ac:'[omitted]'}):{},
+      mouseEvents:pending?pending.mouseEvents:[],
+      env:{
+        userAgent:navigator.userAgent, platform:navigator.platform,
+        screen:screen.width+'x'+screen.height,
+        inner:innerWidth+'x'+innerHeight,
+      }
+    };
+    var b=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+    var a=document.createElement('a');a.href=URL.createObjectURL(b);
+    a.download='ac_compare_'+Date.now()+'.json';a.click();
+    _log('info','已导出 AC 对比 JSON (browser='+browserAC.length+', sidecar='+(sidecarAC||'').length+')');
+  }
+
+  if(window.__dx.lastSidecarAC){
+    doExport(window.__dx.lastSidecarAC);
+  } else if(pending){
+    _log('info','先生成 Sidecar AC...');
+    callSidecar(pending.params, pending.mouseEvents, function(ac){ doExport(ac); });
+  } else {
+    doExport('');
+  }
+}
+
+// ═══ 导出 ═══
+function exportSnap(){
+  var d=window.__dx;
+  var s={_ts:new Date().toISOString(), env:{
+    userAgent:navigator.userAgent, platform:navigator.platform,
+    colorDepth:screen.colorDepth, screen:screen.width+'x'+screen.height,
+    avail:screen.availWidth+'x'+screen.availHeight,
+    inner:innerWidth+'x'+innerHeight, outer:outerWidth+'x'+outerHeight,
+  }, loadResp:d.loadResp, verifyReq:d.verifyReq?(function(){
+    var v=Object.assign({},d.verifyReq); v._ac_length=(v.ac||'').length; return v;
+  })():null, verifyResp:d.verifyResp, mouseEvents:d.mouseEvents,
+  token:d.token, history:d.history, stats:stats};
+  var b=new Blob([JSON.stringify(s,null,2)],{type:'application/json'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(b);
+  a.download='dx_snap_'+Date.now()+'.json';a.click();
+}
+
+// ═══ 创建验证码 ═══
+function createCaptcha(){
+  var d=window.__dx;
+  if(d.verifyResp) d.history.push({ts:Date.now(),req:d.verifyReq,resp:d.verifyResp});
+  d.loadResp=null; d.verifyReq=null; d.verifyResp=null; d.token=null;
+  d.requests=[]; d.mouseEvents=[]; d.pendingV1=null;
+  hideInterceptPanel();
+
+  var box=document.getElementById('captcha-box');
+  box.innerHTML='';
+  document.getElementById('result').innerHTML='';
+  document.getElementById('mouse-info').textContent='';
+
+  var newDiv=document.createElement('div');
+  newDiv.id='captcha-inner';
+  box.appendChild(newDiv);
+
+  if(!window._dx || !window._dx.Captcha){
+    setS('SDK 加载中...','#cc6600');
+    setTimeout(createCaptcha, 300);
+    return;
+  }
+
+  _log('info','=== 创建新实例 ===');
+  if(d.interceptMode) _log('intercept','拦截模式已开启 - /api/v1 将被拦截');
+
+  window._dx.Captcha(newDiv, {
+    appId: APP_KEY,
+    style: 'embed',
+    width: 300,
+    success: function(token){
+      stats.total++; stats.success++; updStats();
+      _log('info','========== SUCCESS ==========');
+      _logK('token', token.substring(0,40)+'...');
+      window.__dx.token=token;
+      setS('通过','#52c41a');
+      document.getElementById('result').innerHTML='<div style="color:#52c41a;font-weight:bold">通过</div>';
+    },
+    fail: function(err){
+      stats.total++;
+      var vr=window.__dx.verifyResp;
+      if(vr && vr.msg==='二次验证'){
+        stats.secondary++; updStats();
+        _log('warn','=== 二次验证 type='+(vr.sv&&vr.sv.type)+' ===');
+        setS('二次验证','#cc6600');
+        document.getElementById('result').innerHTML='<div style="color:#cc6600">二次验证 type='+(vr.sv&&vr.sv.type)+'</div>';
+      } else if(window.__dx.pendingV1) {
+        // 拦截模式下 SDK 会 timeout 触发 fail, 忽略
+        setS('已拦截, 等待操作','#9333ea');
+      } else {
+        stats.retry++; updStats();
+        _log('err','=== fail: '+JSON.stringify(err)+' ===');
+        setS('失败','#ff4d4f');
+      }
+    }
+  });
+  setS('请滑动','#52c41a');
+}
+
+(function w(){
+  if(window._dx && window._dx.Captcha){ _log('info','SDK 就绪'); createCaptcha(); }
+  else { setS('等待SDK','#cc6600'); setTimeout(w,200); }
+})();
+</script>
+</body>
+</html>

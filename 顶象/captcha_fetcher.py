@@ -17,6 +17,12 @@ CDN_BASE = "https://static4.dingxiang-inc.com/picture"
 DEFAULT_APP_KEY = "12610a3853150e888ccd0c6d4c415626"
 OUTPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "captcha_output")
 
+DEFAULT_UA = (
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
+)
+DEFAULT_HREF = "https://cdn.dingxiang-inc.com/"
+
 
 def _build_opener():
     """Build a urlopen opener that respects DX_PROXY env var
@@ -44,12 +50,14 @@ def generate_aid():
 
 
 def fetch_captcha_config(width=300, height=165, slider_size=50,
-                         app_key=DEFAULT_APP_KEY, jsv="5.1.53"):
+                         app_key=DEFAULT_APP_KEY, jsv="5.1.53", aid=None):
     """调用顶象验证码 API，获取验证码配置"""
+    if aid is None:
+        aid = generate_aid()
     params = urllib.parse.urlencode({
         "w": width, "h": height, "s": slider_size,
         "ak": app_key, "c": "", "jsv": jsv,
-        "aid": generate_aid(), "wp": 1, "de": 0,
+        "aid": aid, "wp": 1, "de": 0,
         "uid": "", "lf": 0, "tpc": "",
         "_r": str(random.random()),
     })
@@ -57,8 +65,9 @@ def fetch_captcha_config(width=300, height=165, slider_size=50,
     print(f"[1] 请求验证码配置...\n    URL: {url}")
 
     _, body = https_get(url, {
-        "Referer": "https://cdn.dingxiang-inc.com/",
-        "Origin": "https://cdn.dingxiang-inc.com",
+        "Referer": DEFAULT_HREF,
+        "Origin": DEFAULT_HREF.rstrip("/"),
+        "User-Agent": DEFAULT_UA,
     })
     data = json.loads(body)
     print(f"[1] 响应: {json.dumps(data, indent=2, ensure_ascii=False)}")
@@ -72,7 +81,8 @@ def download_image(img_path, save_name):
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     _, body = https_get(url, {
-        "Referer": "https://cdn.dingxiang-inc.com/",
+        "Referer": DEFAULT_HREF,
+        "User-Agent": DEFAULT_UA,
         "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
     })
 

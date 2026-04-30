@@ -31,6 +31,8 @@ from typing import Any, Dict, List, Tuple
 import numpy as np
 from PIL import Image
 
+from captcha_solver import IDENTITY
+
 CDN_BASE = "https://static4.dingxiang-inc.com/picture"
 VERIFY_V2_URL = "https://cap.dingxiang-inc.com/api/v2"  # clickword type 1
 VERIFY_V3_URL = "https://cap.dingxiang-inc.com/api/v3"  # icon-click type 3
@@ -117,75 +119,149 @@ def find_icon_centers(tp1_bytes: bytes, icon_paths: List[str]) -> List[Tuple[int
     return centers
 
 
+def _preprocess_clickword(tp1_bytes: bytes) -> bytes:
+    """Enhance clickword image: isolate characters from colored background."""
+    import cv2
+    arr = cv2.imdecode(np.frombuffer(tp1_bytes, np.uint8), cv2.IMREAD_COLOR)
+    hsv = cv2.cvtColor(arr, cv2.COLOR_BGR2HSV)
+    # The background is a uniform color (green/blue/red). Characters are
+    # white/yellow/contrasting. Extract non-background pixels.
+    # Saturation-based: bg is saturated, chars are light/desaturated
+    _, sat_mask = cv2.threshold(hsv[:, :, 1], 80, 255, cv2.THRESH_BINARY_INV)
+    # Value-based: chars tend to be bright
+    _, val_mask = cv2.threshold(hsv[:, :, 2], 160, 255, cv2.THRESH_BINARY)
+    # Combine: pixels that are either desaturated OR very bright
+    mask = cv2.bitwise_or(sat_mask, val_mask)
+    # Clean up with morphology
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+    # Create white-on-black output
+    result = np.zeros_like(arr)
+    result[mask > 0] = [255, 255, 255]
+    _, buf = cv2.imencode('.png', result)
+    return buf.tobytes()
+
+
 def find_clickword_centers(tp1_bytes: bytes, target_chars: List[str]) -> List[Tuple[int, int]]:
-    """Locate each target Chinese character in tp1 using ddddocr's det API.
-    Returns the 3 (x, y) centers in order matching target_chars."""
-    import ddddocr
-    det = ddddocr.DdddOcr(det=True, show_ad=False)
-    boxes = det.detection(tp1_bytes)
-    print(f"[clickword] detected {len(boxes)} text boxes")
-    if not boxes:
-        raise RuntimeError("ddddocr detected no chars")
-
-    # For each box, run OCR to get the character
-    ocr = ddddocr.DdddOcr(show_ad=False)
-    bg = Image.open(BytesIO(tp1_bytes))
+    """Locate each target Chinese character in tp1.
+    Tries PaddleOCR first (better for Chinese), falls back to ddddocr."""
     char_map: Dict[str, Tuple[int, int]] = {}
-    for box in boxes:
-        x1, y1, x2, y2 = box
-        crop = bg.crop((x1, y1, x2, y2))
-        buf = BytesIO(); crop.save(buf, format='PNG')
-        ch = ocr.classification(buf.getvalue())
-        cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
-        print(f"  box=({x1},{y1},{x2},{y2}) center=({cx},{cy}) char={ch!r}")
-        if ch and ch not in char_map:
-            char_map[ch] = (cx, cy)
 
+    try:
+        from paddleocr import PaddleOCR
+        ocr = PaddleOCR(lang='ch', use_textline_orientation=True)
+        bg = Image.open(BytesIO(tp1_bytes))
+        img_arr = np.array(bg.convert("RGB"))
+        results = ocr.predict(img_arr)
+        for result in results:
+            det_count = len(result.get("rec_texts", []))
+            print(f"[clickword] PaddleOCR detected {det_count} text regions")
+            boxes = result.get("dt_polys", [])
+            texts = result.get("rec_texts", [])
+            scores = result.get("rec_scores", [])
+            for i, (box_pts, text, conf) in enumerate(zip(boxes, texts, scores)):
+                xs = [p[0] for p in box_pts]
+                ys = [p[1] for p in box_pts]
+                cx = int(sum(xs) / len(xs))
+                cy = int(sum(ys) / len(ys))
+                print(f"  paddle: text={text!r} conf={conf:.2f} center=({cx},{cy})")
+                for ch in text:
+                    if ch and ch not in char_map:
+                        char_map[ch] = (cx, cy)
+    except ImportError:
+        pass
+
+    # Fallback / supplement with ddddocr
+    if not all(c in char_map for c in target_chars):
+        import ddddocr
+        det = ddddocr.DdddOcr(det=True, show_ad=False)
+        boxes = det.detection(tp1_bytes)
+        print(f"[clickword] ddddocr detected {len(boxes)} text boxes")
+        if boxes:
+            ocr_d = ddddocr.DdddOcr(show_ad=False)
+            enhanced = _preprocess_clickword(tp1_bytes)
+            bg_enhanced = Image.open(BytesIO(enhanced))
+            bg_orig = Image.open(BytesIO(tp1_bytes))
+            for box in boxes:
+                x1, y1, x2, y2 = box
+                cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
+                # Try both original and enhanced crops
+                best_ch = ""
+                for src in [bg_orig, bg_enhanced]:
+                    crop = src.crop((x1, y1, x2, y2))
+                    buf = BytesIO()
+                    crop.save(buf, format='PNG')
+                    ch = ocr_d.classification(buf.getvalue())
+                    if ch and len(ch) == 1:
+                        best_ch = ch
+                        break
+                    if ch and not best_ch:
+                        best_ch = ch
+                print(f"  ddddocr: box=({x1},{y1},{x2},{y2}) center=({cx},{cy}) char={best_ch!r}")
+                if best_ch and best_ch not in char_map:
+                    char_map[best_ch] = (cx, cy)
+
+    print(f"[clickword] char_map: {char_map}")
     centers = []
     for c in target_chars:
         if c in char_map:
             centers.append(char_map[c])
         else:
-            # Fallback: pick a box we haven't used yet (best guess)
-            print(f"  WARN: char {c!r} not detected, picking first unused box")
-            unused = [((x1+x2)//2, (y1+y2)//2) for (x1, y1, x2, y2) in boxes
-                      if ((x1+x2)//2, (y1+y2)//2) not in centers]
-            if not unused:
-                raise RuntimeError(f"no fallback box for {c}")
-            centers.append(unused[0])
+            print(f"  WARN: char {c!r} not found in OCR results")
+            # Pick unused box center as fallback
+            used = set(centers)
+            all_centers = list(char_map.values())
+            unused = [p for p in all_centers if p not in used]
+            if unused:
+                centers.append(unused[0])
+            else:
+                raise RuntimeError(f"no position found for char {c!r}")
     return centers
 
 
 def gen_ua_with_clicks(token: str, click_centers: List[Tuple[int, int]],
                        start_time_ms: int, pre_init_ms: int = 80000,
                        hover_x: int = 0, hover_y: int = 0) -> str:
-    """Build UA with: hover MM → multiple recordCA(click) → sendCA → sendTemp."""
+    """Build UA matching real captured v2 structure:
+      hover MM → per click (MM + MD + recordCA + TEMP + LO) → sendCA at end.
+
+    Real v2 had: each click produces an 8B MD segment, TEMP/LO between clicks,
+    and a single large CA segment (~341B) flushed at the very end."""
     events = [
-        # hover MM before clicking
         {"kind": "mm", "x": hover_x, "y": hover_y, "targetId": "", "dt": random.randint(800, 1500)},
     ]
-    for cx, cy in click_centers:
-        # Each click: recordCA + a small mouse move toward target
-        events.append({"kind": "mm", "x": cx, "y": cy, "targetId": "", "dt": random.randint(150, 500)})
-        events.append({"kind": "ca", "x": cx, "y": cy, "dt": random.randint(20, 80)})
-    # Flush click samples + telemetry
+    for i, (cx, cy) in enumerate(click_centers):
+        events.append({"kind": "mm", "x": cx, "y": cy, "targetId": "", "dt": random.randint(300, 800)})
+        events.append({"kind": "md", "x": cx, "y": cy, "button": 0, "targetId": "", "dt": random.randint(30, 100)})
+        events.append({"kind": "ca", "x": cx, "y": cy, "dt": random.randint(5, 20)})
+        events.append({"kind": "temp", "body": {
+            "xpath": "/html/body/div",
+            "x": cx, "y": cy, "isTrusted": True,
+        }, "dt": random.randint(10, 40)})
+        if i < len(click_centers) - 1:
+            events.append({"kind": "mm", "x": cx + random.randint(-5, 5),
+                           "y": cy + random.randint(-3, 3), "targetId": "", "dt": random.randint(50, 200)})
     events.append({"kind": "sendCA", "dt": random.randint(20, 60)})
-    events.append({"kind": "temp", "body": {
-        "xpath": "/html/body/div",
-        "x": click_centers[-1][0] if click_centers else 0,
-        "y": click_centers[-1][1] if click_centers else 0,
-        "isTrusted": True,
-    }, "dt": random.randint(10, 40)})
 
+    I = IDENTITY
     spec = {
         "token": token,
         "events": events,
         "startTime": start_time_ms,
         "preInitMs": pre_init_ms,
         "env": {
-            "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
-            "href": "https://cdn.dingxiang-inc.com/",
-            "referrer": "https://cdn.dingxiang-inc.com/",
+            "userAgent": I["ua"],
+            "href": I["href"],
+            "referrer": I["referrer"],
+            "platform": I["platform"],
+            "screenW": I["screen_w"],
+            "screenH": I["screen_h"],
+            "availW": I["avail_w"],
+            "availH": I["avail_h"],
+            "innerW": I["inner_w"],
+            "innerH": I["inner_h"],
+            "outerW": I["outer_w"],
+            "outerH": I["outer_h"],
         },
     }
     result = subprocess.run(
@@ -211,10 +287,9 @@ def submit_secondary(ac: str, ak: str, c: str, sid: str, aid: str,
     }).encode("utf-8")
     headers = {
         "Content-type": "application/x-www-form-urlencoded",
-        "Origin": "https://cdn.dingxiang-inc.com",
-        "Referer": "https://cdn.dingxiang-inc.com/",
-        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-                      "(KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
+        "Origin": IDENTITY["href"].rstrip("/"),
+        "Referer": IDENTITY["referrer"],
+        "User-Agent": IDENTITY["ua"],
     }
     proxy = os.environ.get("DX_PROXY") or os.environ.get("HTTPS_PROXY")
     if proxy:
@@ -226,8 +301,10 @@ def submit_secondary(ac: str, ak: str, c: str, sid: str, aid: str,
         return json.loads(r.read().decode())
 
 
-def solve_secondary_verification(sv: Dict[str, Any], ak: str, constid: str) -> Dict[str, Any]:
-    """Main entry point. sv is the `sv` field returned by /api/v1 with msg=='二次验证'."""
+def solve_secondary_verification(sv: Dict[str, Any], ak: str, constid: str,
+                                  original_aid: str | None = None) -> Dict[str, Any]:
+    """Main entry point. sv is the `sv` field returned by /api/v1 with msg=='二次验证'.
+    original_aid: reuse the aid from the v1 submission for session continuity."""
     captcha_type = sv.get("type")
     sv_sid = sv.get("sid")
     if captcha_type == 3:
@@ -238,6 +315,7 @@ def solve_secondary_verification(sv: Dict[str, Any], ak: str, constid: str) -> D
         tp1_url = CDN_BASE + sv["tp1"]
         print(f"[2fa] downloading tp1: {tp1_url}")
         tp1_bytes = fetch_bytes(tp1_url)
+        os.makedirs("/tmp/dx_icon", exist_ok=True)
         with open("/tmp/dx_icon/last_tp1.webp", "wb") as f:
             f.write(tp1_bytes)
         centers = find_icon_centers(tp1_bytes, icons)
@@ -249,13 +327,14 @@ def solve_secondary_verification(sv: Dict[str, Any], ak: str, constid: str) -> D
         tp1_url = CDN_BASE + sv["tp1"]
         print(f"[2fa] downloading clickword tp1: {tp1_url}, chars to click in order: {target_chars}")
         tp1_bytes = fetch_bytes(tp1_url)
+        os.makedirs("/tmp/dx_icon", exist_ok=True)
         with open("/tmp/dx_icon/last_clickword_tp1.webp", "wb") as f:
             f.write(tp1_bytes)
         centers = find_clickword_centers(tp1_bytes, target_chars)
     else:
         raise NotImplementedError(f"unknown 2fa type {captcha_type}")
 
-    aid = f"dx-{int(time.time()*1000)}-{random.randint(1, 99999999)}-2"
+    aid = original_aid or f"dx-{int(time.time()*1000)}-{random.randint(1, 99999999)}-2"
     start_ms = int(time.time() * 1000) - random.randint(800, 1500)
     ua = gen_ua_with_clicks(token=sv_sid, click_centers=centers,
                              start_time_ms=start_ms, pre_init_ms=random.randint(60000, 100000))

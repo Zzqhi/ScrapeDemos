@@ -29,6 +29,41 @@ CONSTID_HELPER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "simul
 GEN_UA_HELPER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "scripts", "gen_ua.js")
 VERIFY_URL = "https://cap.dingxiang-inc.com/api/v1"
 
+# ── 统一身份指纹 ──────────────────────────────────────────
+# constid(c 参数)、ac(greenseer UA)、HTTP 请求头三处必须一致，
+# 服务端会交叉校验 UA/屏幕/分辨率等字段。
+# 数据来源：Windows Chrome 147 手动验证成功的快照 (2026-04-30)
+CHROME_VER = "147"
+CHROME_FULL_VER = "147.0.0.0"
+IDENTITY = {
+    "ua": (
+        f"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        f"(KHTML, like Gecko) Chrome/{CHROME_FULL_VER} Safari/537.36"
+    ),
+    "platform": "Win32",
+    "brands": [
+        {"brand": "Google Chrome", "version": CHROME_VER},
+        {"brand": "Chromium", "version": CHROME_VER},
+        {"brand": "Not A(Brand", "version": "24"},
+    ],
+    "brands_full": [
+        {"brand": "Google Chrome", "version": CHROME_FULL_VER},
+        {"brand": "Chromium", "version": CHROME_FULL_VER},
+        {"brand": "Not A(Brand", "version": "24.0.0.0"},
+    ],
+    "screen_w": 1920,
+    "screen_h": 1080,
+    "avail_w": 1920,
+    "avail_h": 1032,
+    "inner_w": 1099,
+    "inner_h": 926,
+    "outer_w": 1115,
+    "outer_h": 1021,
+    "color_depth": 32,
+    "href": "https://www.dingxiang-inc.com/business/captcha",
+    "referrer": "https://www.dingxiang-inc.com/",
+}
+
 
 def build_drag_events(points: List[Dict[str, int]], step_ms: int = 16,
                       verify_x: int = 0, verify_y: int = 0) -> List[Dict[str, Any]]:
@@ -84,6 +119,7 @@ def gen_ua_via_sidecar(token: str, events: List[Dict[str, Any]], start_time_ms: 
         with open(REAL_HEAD_PATH) as f:
             real_head = f.read()
 
+    I = IDENTITY
     spec = {
         "token": token,
         "events": events,
@@ -92,12 +128,18 @@ def gen_ua_via_sidecar(token: str, events: List[Dict[str, Any]], start_time_ms: 
         "realBody": real_body,
         "realHead": real_head,
         "env": {
-            "userAgent": (
-                "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-                "(KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
-            ),
-            "href": "https://cdn.dingxiang-inc.com/",
-            "referrer": "https://cdn.dingxiang-inc.com/",
+            "userAgent": I["ua"],
+            "href": I["href"],
+            "referrer": I["referrer"],
+            "platform": I["platform"],
+            "screenW": I["screen_w"],
+            "screenH": I["screen_h"],
+            "availW": I["avail_w"],
+            "availH": I["avail_h"],
+            "innerW": I["inner_w"],
+            "innerH": I["inner_h"],
+            "outerW": I["outer_w"],
+            "outerH": I["outer_h"],
         },
     }
     result = subprocess.run(
@@ -173,8 +215,6 @@ def save_constid_cache(cache: Dict[str, str]) -> None:
 
 def build_detect_short_payload(
     *,
-    href: str = "https://cdn.dingxiang-inc.com/",
-    referrer: str = "https://cdn.dingxiang-inc.com/",
     title: str = "captcha",
     timezone_name: str = "Asia/Shanghai",
     timezone_offset: int = -480,
@@ -182,27 +222,19 @@ def build_detect_short_payload(
     now_ms = int(time.time() * 1000)
     cpu_count = os.cpu_count() or 8
     unknown_fp_hash = hashlib.md5("unknown".encode("utf-8")).hexdigest()
+    I = IDENTITY
     high_entropy_values = {
         "architecture": "x86",
         "bitness": "64",
         "model": "",
-        "platformVersion": "6.0.0",
-        "fullVersionList": [
-            {"brand": "Google Chrome", "version": "143.0.0.0"},
-            {"brand": "Chromium", "version": "143.0.0.0"},
-            {"brand": "Not A(Brand", "version": "24.0.0.0"},
-        ],
+        "platformVersion": "15.0.0",
+        "fullVersionList": I["brands_full"],
     }
     user_agent_data = {
-        "brands": [
-            {"brand": "Google Chrome", "version": "143"},
-            {"brand": "Chromium", "version": "143"},
-            {"brand": "Not A(Brand", "version": "24"},
-        ],
+        "brands": I["brands"],
         "mobile": False,
-        "platform": "Linux",
+        "platform": "Windows",
     }
-    # 按前端 detector 的字段顺序构造，顺序会影响 Param 编码。
     return {
         "can": unknown_fp_hash,
         "cpt": "probably;probably;maybe;;;;probably;probably;maybe;maybe;",
@@ -218,13 +250,10 @@ def build_detect_short_payload(
         "jf": "Arial Unicode MS;Calibri;Century Gothic;Gill Sans;Helvetica Neue;Menlo",
         "cc": "unknown",
         "hc": cpu_count,
-        "ua": (
-            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-            "(KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"
-        ),
+        "ua": I["ua"],
         "uad": json.dumps(user_agent_data, separators=(",", ":")),
         "hev": json.dumps(high_entropy_values, separators=(",", ":")),
-        "np": "Linux x86_64",
+        "np": I["platform"],
         "lug": "zh-CN",
         "ce": 1,
         "netType": "4g",
@@ -236,21 +265,21 @@ def build_detect_short_payload(
         "ind": 1,
         "ab": 0,
         "od": 0,
-        "cd": 24,
-        "res": "1920;1080",
-        "ar": "1920;1032",
-        "vs": "1365;947",
-        "ws": "1365;1024",
+        "cd": I["color_depth"],
+        "res": f"{I['screen_w']};{I['screen_h']}",
+        "ar": f"{I['avail_w']};{I['avail_h']}",
+        "vs": f"{I['inner_w']};{I['inner_h']}",
+        "ws": f"{I['outer_w']};{I['outer_h']}",
         "rp": "PDF Viewer;Chrome PDF Viewer;Chromium PDF Viewer;Microsoft Edge PDF Viewer;WebKit built-in PDF",
         "adb": False,
         "hl": 6,
         "cl": 1,
         "st": 12,
         "dt": title,
-        "url": href,
+        "url": I["href"],
         "bl": 0,
         "hdl": 0,
-        "dr": referrer,
+        "dr": I["referrer"],
         "xp": "",
         "in": 0,
         "hsl": 4294705152,
@@ -491,10 +520,9 @@ def verify_captcha(ac, ak, sid, aid, x, y, c="", jsv="1.5.46.2"):
 
     headers = {
         "Content-type": "application/x-www-form-urlencoded",
-        "Origin": "https://cdn.dingxiang-inc.com",
-        "Referer": "https://cdn.dingxiang-inc.com/",
-        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-                      "(KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
+        "Origin": IDENTITY["href"].rstrip("/"),
+        "Referer": IDENTITY["referrer"],
+        "User-Agent": IDENTITY["ua"],
     }
 
     req = urllib.request.Request(VERIFY_URL, data=post_data, headers=headers)
@@ -508,7 +536,7 @@ def run_once() -> Dict[str, Any]:
     aid = generate_aid()
 
     print("[1] 获取验证码配置...")
-    config = fetch_captcha_config()
+    config = fetch_captcha_config(aid=aid)
     if not config.get("success") or config.get("result") != 1:
         raise RuntimeError(f"获取验证码失败: {config}")
 
@@ -568,6 +596,11 @@ def run_once() -> Dict[str, Any]:
     )
     print(f"[6] 验证响应: {json.dumps(verify_result, indent=2, ensure_ascii=False)}")
 
+    # 二次验证（点选）暂时跳过，先验证一次验证的通过率
+    sv = verify_result.get("sv")
+    if verify_result.get("msg") == "二次验证" and sv:
+        print(f"\n[7] 触发二次验证 type={sv.get('type')}，当前跳过点选逻辑")
+
     return {
         "sid": sid,
         "cid": cid,
@@ -585,14 +618,22 @@ def run_once() -> Dict[str, Any]:
 
 def main() -> None:
     result = run_once()
-    print("\n[7] 完成")
+    print("\n[summary] 完成")
     print(f"sid: {result['sid']}")
     print(f"cid: {result['cid']}")
     print(f"aid: {result['aid']}")
     print(f"target_x: {result['target_x']}")
-    success = result["verify_result"].get("success", False)
-    print(f"验证结果: {'通过 ✓' if success else '失败 ✗'}")
-    print(f"响应详情: {result['verify_result']}")
+    vr = result["verify_result"]
+    sv_result = vr.get("sv_result")
+    if sv_result:
+        sv_success = sv_result.get("success", False)
+        print(f"一次验证: {vr.get('msg', 'unknown')}")
+        print(f"二次验证: {'通过 ✓' if sv_success else '失败 ✗'}")
+        print(f"二次验证详情: {sv_result}")
+    else:
+        success = vr.get("success", False)
+        print(f"验证结果: {'通过 ✓' if success else '失败 ✗'}")
+        print(f"响应详情: {vr}")
 
 
 if __name__ == "__main__":

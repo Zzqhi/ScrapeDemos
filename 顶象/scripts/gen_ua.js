@@ -38,8 +38,8 @@ function buildEnv(opts) {
   const href = opts.href || 'https://cdn.dingxiang-inc.com/';
   const referrer = opts.referrer || 'https://cdn.dingxiang-inc.com/';
   const userAgent = opts.userAgent ||
-    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 ' +
-    '(KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36';
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
+    '(KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36';
 
   // sendTemp captures document.body.innerHTML.substr(0, ~300) as 'fragment'
   // and reports bodyLength/headLength. The host DOM must look like a real
@@ -83,7 +83,7 @@ function buildEnv(opts) {
   // Force a Chrome-like navigator (jsdom's default UA is 'jsdom/x.y.z' which
   // greenseer's getBrowserAndVersion regex won't recognize as Chrome).
   Object.defineProperty(win.navigator, 'userAgent', { value: userAgent, configurable: true });
-  Object.defineProperty(win.navigator, 'platform', { value: opts.platform || 'Linux x86_64', configurable: true });
+  Object.defineProperty(win.navigator, 'platform', { value: opts.platform || 'Win32', configurable: true });
   Object.defineProperty(win.navigator, 'language', { value: 'zh-CN', configurable: true });
   Object.defineProperty(win.navigator, 'languages', { value: ['zh-CN', 'zh'], configurable: true });
   Object.defineProperty(win.navigator, 'cookieEnabled', { value: true, configurable: true });
@@ -91,18 +91,18 @@ function buildEnv(opts) {
 
   // Polyfill missing/limited browser APIs that greenseer touches.
   // Match the real browser env captured from a successful slide so SC bytes line up.
-  Object.defineProperty(win.screen, 'width', { value: opts.screenW || 1718, configurable: true });
-  Object.defineProperty(win.screen, 'height', { value: opts.screenH || 918, configurable: true });
-  Object.defineProperty(win.screen, 'availWidth', { value: opts.availW || 1718, configurable: true });
-  Object.defineProperty(win.screen, 'availHeight', { value: opts.availH || 891, configurable: true });
+  Object.defineProperty(win.screen, 'width', { value: opts.screenW || 1920, configurable: true });
+  Object.defineProperty(win.screen, 'height', { value: opts.screenH || 1080, configurable: true });
+  Object.defineProperty(win.screen, 'availWidth', { value: opts.availW || 1920, configurable: true });
+  Object.defineProperty(win.screen, 'availHeight', { value: opts.availH || 1032, configurable: true });
   Object.defineProperty(win.screen, 'colorDepth', { value: 24, configurable: true });
   Object.defineProperty(win.screen, 'pixelDepth', { value: 24, configurable: true });
   win.screen.screenLeft = 0;
   win.screen.screenTop = 0;
-  Object.defineProperty(win, 'innerWidth', { value: opts.innerW || 836, configurable: true });
-  Object.defineProperty(win, 'innerHeight', { value: opts.innerH || 780, configurable: true });
-  Object.defineProperty(win, 'outerWidth', { value: opts.outerW || 844, configurable: true });
-  Object.defineProperty(win, 'outerHeight', { value: opts.outerH || 871, configurable: true });
+  Object.defineProperty(win, 'innerWidth', { value: opts.innerW || 1365, configurable: true });
+  Object.defineProperty(win, 'innerHeight', { value: opts.innerH || 947, configurable: true });
+  Object.defineProperty(win, 'outerWidth', { value: opts.outerW || 1382, configurable: true });
+  Object.defineProperty(win, 'outerHeight', { value: opts.outerH || 1024, configurable: true });
 
   // Allow Date.now overriding via win.__nowOverride
   const realDateNow = win.Date.now.bind(win.Date);
