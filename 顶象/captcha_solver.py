@@ -106,22 +106,30 @@ def image_to_png_bytes(image) -> bytes:
 
 
 def solve_slider_x(slider_bytes: bytes, bg_restored_bytes: bytes) -> int:
-    try:
-        import ddddocr
-    except ImportError as exc:
-        raise RuntimeError("缺少依赖 ddddocr，请先安装: pip install ddddocr") from exc
+    """Edge-based template match — robust against decoy shapes that ddddocr
+    confuses with the real gap. Returns gap X in display (300px) coords."""
+    import cv2
+    import numpy as np
+    from PIL import Image as _Image
 
-    ocr = ddddocr.DdddOcr(show_ad=False)
-    result = ocr.slide_match(slider_bytes, bg_restored_bytes, simple_target=True)
+    bg_arr = cv2.imdecode(np.frombuffer(bg_restored_bytes, np.uint8), cv2.IMREAD_COLOR)
+    bg_w = bg_arr.shape[1]
 
-    if isinstance(result, dict):
-        target = result.get("target")
-        if isinstance(target, (list, tuple)) and len(target) >= 1:
-            # 采用固定缩放即可
-            return int(target[0] * 300 / 400)
-        if "x" in result:
-            return int(result["x"] * 300 / 400)
-    raise RuntimeError(f"无法从 slide_match 结果中解析 X 坐标: {result!r}")
+    sl_pil = _Image.open(BytesIO(slider_bytes)).convert("RGBA")
+    bbox = sl_pil.split()[-1].getbbox()
+    sl_cropped = sl_pil.crop(bbox) if bbox else sl_pil
+    sl_arr = np.array(sl_cropped)
+    sl_rgb = cv2.cvtColor(sl_arr[:, :, :3], cv2.COLOR_RGB2BGR)
+
+    bg_edge = cv2.Canny(cv2.cvtColor(bg_arr, cv2.COLOR_BGR2GRAY), 100, 200)
+    sl_edge = cv2.Canny(cv2.cvtColor(sl_rgb, cv2.COLOR_BGR2GRAY), 100, 200)
+
+    res = cv2.matchTemplate(bg_edge, sl_edge, cv2.TM_CCOEFF_NORMED)
+    _, _, _, max_loc = cv2.minMaxLoc(res)
+    gap_native_x = max_loc[0]
+    display_x = int(round(gap_native_x * 300.0 / bg_w))
+    print(f"[ocr] bg_w={bg_w} gap_native={gap_native_x} display_x={display_x}")
+    return display_x
 
 
 def make_local_id(length: int = 32) -> str:
