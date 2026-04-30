@@ -63,11 +63,13 @@ def build_drag_events(points: List[Dict[str, int]], step_ms: int = 16) -> List[D
     return events
 
 
-def gen_ua_via_sidecar(token: str, events: List[Dict[str, Any]], start_time_ms: int) -> str:
+def gen_ua_via_sidecar(token: str, events: List[Dict[str, Any]], start_time_ms: int,
+                       pre_init_ms: int = 800) -> str:
     spec = {
         "token": token,
         "events": events,
         "startTime": start_time_ms,
+        "preInitMs": pre_init_ms,
         "env": {
             "userAgent": (
                 "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
@@ -469,7 +471,12 @@ def run_once() -> Dict[str, Any]:
     step_ms = random.randint(14, 22)
     events = build_drag_events(points, step_ms=step_ms)
     start_time_ms = int(time.time() * 1000) - random.randint(900, 1800)
-    ua = gen_ua_via_sidecar(token=sid, events=events, start_time_ms=start_time_ms)
+    # Real flow: greenseer is loaded ~80 seconds before user starts sliding.
+    # Sidecar must mirror that elapsed window so encrypted timestamps match
+    # what the server expects.
+    pre_init_ms = random.randint(60_000, 100_000)
+    ua = gen_ua_via_sidecar(token=sid, events=events, start_time_ms=start_time_ms,
+                            pre_init_ms=pre_init_ms)
     print(f"[5] 轨迹点数量: {len(points)}, 事件数: {len(events)}")
     print(f"[5] UA 长度: {len(ua)}")
 
