@@ -6,7 +6,32 @@ const path = require('path');
 const { JSDOM, VirtualConsole } = require('jsdom');
 
 const GREENSEER_PATH = path.join(__dirname, 'greenseer_live.js');
-const greenseerSrc = fs.readFileSync(GREENSEER_PATH, 'utf8');
+const GREENSEER_URL = 'https://cdn.dingxiang-inc.com/ctu-group/ctu-greenseer/greenseer.js';
+const CACHE_TTL_MS = 30 * 60 * 1000; // refresh cache every 30 min
+
+function loadGreenseer() {
+  // Fetch latest if cache stale (greenseer rotates obfuscation seeds frequently).
+  let needFetch = true;
+  try {
+    const stat = fs.statSync(GREENSEER_PATH);
+    if (Date.now() - stat.mtimeMs < CACHE_TTL_MS) needFetch = false;
+  } catch (_) { /* missing: fetch */ }
+  if (needFetch) {
+    try {
+      const https = require('https');
+      const url = `${GREENSEER_URL}?_t=${Date.now()}`;
+      const data = require('child_process').execSync(`curl -sL '${url}'`, {timeout: 10000});
+      if (data && data.length > 30000) {
+        fs.writeFileSync(GREENSEER_PATH, data);
+      }
+    } catch (e) {
+      // Fall back to cache if fetch fails.
+    }
+  }
+  return fs.readFileSync(GREENSEER_PATH, 'utf8');
+}
+
+const greenseerSrc = loadGreenseer();
 
 function buildEnv(opts) {
   opts = opts || {};
