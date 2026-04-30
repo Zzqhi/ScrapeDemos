@@ -201,6 +201,18 @@ async function generate(spec) {
       case 'sendSA':
         init.sendSA();
         break;
+      case 'ca':
+        // Click area sample for clickword/icon-click captcha. Each click of
+        // a target icon is recorded; sendCA is called once after all clicks.
+        init.recordCA({
+          offsetX: ev.x,
+          offsetY: ev.y,
+          target: { className: 'captcha_clickword_hits' },
+        });
+        break;
+      case 'sendCA':
+        init.sendCA();
+        break;
       case 'raw_app': {
         // ev.type: int segment type, ev.hex: encrypted payload as hex string.
         // Bytes go directly into _ua via inst.app(type, payload_string).
