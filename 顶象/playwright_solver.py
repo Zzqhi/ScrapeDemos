@@ -86,57 +86,82 @@ def solve_target_x(bg_bytes: bytes, slider_bytes: bytes) -> int:
     return display_x
 
 
-def _ease_distance(distance: int, steps: int) -> List[int]:
-    """Generate cumulative offsets from 0..distance using an ease-out curve
-    with mild jitter, matching captured human drag profiles."""
-    out: List[int] = []
-    for i in range(steps + 1):
-        t = i / steps
-        # ease-out cubic gives quick start, slow finish — close to typical user
-        eased = 1 - (1 - t) ** 3
-        x = eased * distance
-        out.append(int(round(x)))
-    # Add a small overshoot then return (humans rarely stop exactly on target).
-    overshoot = random.randint(2, 5)
-    settle = random.randint(2, 4)
-    for k in range(1, settle + 1):
-        out.append(distance + overshoot - k * (overshoot // settle or 1))
-    out.append(distance)
-    # ensure monotonic-ish dedup
+def _human_trajectory(distance: int) -> List[int]:
+    """Same generator as sidecar's generate_drag_points, returning flat
+    list of cumulative x offsets (0..distance with overshoot/return/settle)."""
+    if distance <= 0:
+        return [0]
+
+    pts: List[int] = [0]
+    overshoot = random.randint(4, 12)
+    peak = distance + overshoot
+
+    forward_steps = random.randint(35, 55)
+    for i in range(1, forward_steps + 1):
+        t = i / forward_steps
+        eased = 4 * t**3 if t < 0.5 else 1 - ((-2 * t + 2) ** 3) / 2
+        x = eased * peak + random.uniform(-0.4, 0.4)
+        pts.append(int(round(x)))
+    if pts[-1] < peak:
+        pts.append(peak)
+
+    for _ in range(random.randint(0, 2)):
+        pts.append(peak)
+
+    return_steps = random.randint(4, 10)
+    for i in range(1, return_steps + 1):
+        t = i / return_steps
+        eased = 1 - (1 - t) ** 2
+        x = peak - eased * (peak - distance) + random.uniform(-0.3, 0.3)
+        pts.append(int(round(x)))
+
+    for _ in range(random.randint(1, 3)):
+        pts.append(distance)
+
     cleaned: List[int] = []
-    for v in out:
+    for v in pts:
         if cleaned and v == cleaned[-1]:
             continue
         cleaned.append(max(0, v))
     return cleaned
 
 
+def _human_step_dt() -> float:
+    """Inter-step sleep matching captured real distribution."""
+    r = random.random()
+    if r < 0.70:
+        return random.uniform(0.010, 0.025)
+    if r < 0.92:
+        return random.uniform(0.028, 0.070)
+    if r < 0.98:
+        return random.uniform(0.080, 0.150)
+    return random.uniform(0.150, 0.220)
+
+
 def human_drag(page: Page, handle_box: Dict[str, float], distance: int) -> None:
-    """Simulate a realistic mouse drag from slider handle origin to origin+distance."""
+    """Realistic human drag: hover into element first, then mousedown ON the
+    slider, then drag with ease-in-out + overshoot + settle."""
     start_x = handle_box["x"] + handle_box["width"] / 2
     start_y = handle_box["y"] + handle_box["height"] / 2
 
-    page.mouse.move(start_x + random.uniform(-2, 2), start_y + random.uniform(-2, 2))
-    time.sleep(random.uniform(0.05, 0.18))
+    # Use Playwright Locator API so events are dispatched to the actual element
+    # — not just at viewport coordinates that may miss the captcha's listeners.
+    handle = page.locator(f'#{handle_box["id"]}').first
+    handle.hover(force=True, position={"x": handle_box["width"] / 2, "y": handle_box["height"] / 2})
+    time.sleep(random.uniform(0.20, 0.50))
+
+    # Now use raw mouse for fine-grained control after the hover has aligned.
     page.mouse.down()
-    time.sleep(random.uniform(0.04, 0.12))
+    time.sleep(random.uniform(0.06, 0.18))
 
-    steps = random.randint(40, 65)
-    offsets = _ease_distance(distance, steps)
-    prev = 0
+    offsets = _human_trajectory(distance)
     for offset in offsets:
-        # micro-jitter around the path
-        jx = random.uniform(-0.6, 0.6)
-        jy = random.uniform(-1.2, 1.2)
+        jx = random.uniform(-0.5, 0.5)
+        jy = random.uniform(-1.5, 1.5)
         page.mouse.move(start_x + offset + jx, start_y + jy, steps=1)
-        # variable inter-step delay; humans slow down near target
-        if offset >= distance * 0.85:
-            time.sleep(random.uniform(0.018, 0.060))
-        else:
-            time.sleep(random.uniform(0.008, 0.022))
-        prev = offset
+        time.sleep(_human_step_dt())
 
-    time.sleep(random.uniform(0.12, 0.35))
+    time.sleep(random.uniform(0.15, 0.40))
     page.mouse.up()
 
 
@@ -224,14 +249,25 @@ def run_once() -> Dict[str, object]:
         data_url = "data:text/html;base64," + _b.b64encode(TEST_PAGE_HTML.encode()).decode()
         page.goto(data_url, wait_until="domcontentloaded")
 
-        # Wait for captcha widget to render slider.
-        page.wait_for_function(
-            """() => document.querySelector('[id*="slider-handle"], [id*="slider-img-focus"]') != null
-                    || (window._cap && window._cap._cpt && window._cap._cpt.container && window._cap._cpt.container.serverData && window._cap._cpt.container.serverData.success)""",
-            timeout=15000,
-        )
+        # Wait for captcha to either render slider OR auto-pass.
+        # Use a more permissive selector + longer timeout.
+        try:
+            page.wait_for_function(
+                """() => {
+                    const s = document.querySelector('[id^="dx_captcha_basic_slider_"], [id*="slider-img"]');
+                    if (s && s.getBoundingClientRect().width > 5) return true;
+                    // auto-pass
+                    if (window.__token) return true;
+                    // 无感验证成功
+                    if (document.querySelector('[class*="success"]')) return true;
+                    return false;
+                }""",
+                timeout=30000,
+            )
+        except Exception:
+            print("[!] wait_for slider/token timed out")
 
-        time.sleep(0.3)
+        time.sleep(random.uniform(0.5, 1.2))  # let captcha settle
 
         # Fetch bg + slider images for ddddocr.
         imgs = fetch_bg_and_slider(page)
@@ -282,23 +318,35 @@ def run_once() -> Dict[str, object]:
         handle = fetch_slider_geometry(page)
         print(f"[*] handle box: {handle}")
 
-        human_drag(page, handle, target_x)
+        # basic-Captcha SDK adds F=10 for TYPE_BASIC, so we must drag less to
+        # compensate. Empirically server expects verify_x = real_gap (no +10).
+        drag_distance = target_x - 10
+        human_drag(page, handle, drag_distance)
 
         # Wait for verify to fire.
-        page.wait_for_function(
-            "window.__token != null || window.__verifyResp != null",
-            timeout=15000,
-        )
+        try:
+            page.wait_for_function(
+                "window.__token != null || window.__verifyResp != null",
+                timeout=20000,
+            )
+        except Exception:
+            pass  # fall through to read whatever state we have
         token = page.evaluate("window.__token")
         fail = page.evaluate("window.__verifyResp")
         cap = page.evaluate("window.__cap")
 
         verify = next((c for c in cap if "/api/v1" in c.get("url", "")), None)
+        verify_x = None
+        if verify:
+            from urllib.parse import parse_qs
+            params = parse_qs(verify.get("body", ""))
+            verify_x = params.get("x", [None])[0]
 
         result = {
             "sid": imgs["sid"],
             "cid": imgs["cid"],
-            "target_x": target_x,
+            "target_x_predicted": target_x,
+            "verify_x_actual": verify_x,
             "token": token,
             "fail": fail,
             "verify_resp": verify.get("resp") if verify else None,
@@ -310,20 +358,33 @@ def run_once() -> Dict[str, object]:
 def main() -> None:
     success_count = 0
     fail_msgs = []
-    for attempt in range(8):
+    for attempt in range(4):
         try:
             out = run_once()
         except Exception as e:
             print(f"run {attempt+1}: ERR {e}")
             continue
+        pred = out.get("target_x_predicted")
+        actual = out.get("verify_x_actual")
         if out.get("token"):
             success_count += 1
-            print(f"run {attempt+1}: ✓ SUCCESS  target_x={out.get('target_x')}")
+            print(f"run {attempt+1}: ✓ SUCCESS  pred={pred} actual={actual}")
         else:
             fail = out.get("fail", {})
-            msg = fail.get("message", "?") if isinstance(fail, dict) else "?"
+            resp = out.get("verify_resp", "") or ""
+            # try parse from raw verify_resp first
+            msg = "?"
+            if resp:
+                try:
+                    import json as _j
+                    j = _j.loads(resp)
+                    msg = j.get("msg", "?")
+                except Exception:
+                    msg = resp[:60]
+            elif isinstance(fail, dict):
+                msg = fail.get("message", "?")
             fail_msgs.append(msg)
-            print(f"run {attempt+1}: ✗ {msg}  target_x={out.get('target_x')}")
+            print(f"run {attempt+1}: ✗ {msg}  pred={pred} actual={actual}")
     print(f"\nSuccess: {success_count}/8")
     print(f"Fail msgs: {fail_msgs}")
 
