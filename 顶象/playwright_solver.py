@@ -231,10 +231,25 @@ def image_to_png_bytes(img) -> bytes:
 
 def run_once() -> Dict[str, object]:
     with sync_playwright() as p:
+        # Allow DX_PROXY=http://[user:pass@]host:port to test risk-score impact
+        # on a different IP / network.
+        proxy_opt = None
+        proxy_url = os.environ.get("DX_PROXY") or os.environ.get("HTTPS_PROXY")
+        if proxy_url:
+            from urllib.parse import urlparse
+            u = urlparse(proxy_url)
+            proxy_opt = {"server": f"{u.scheme}://{u.hostname}:{u.port or 80}"}
+            if u.username:
+                proxy_opt["username"] = u.username
+            if u.password:
+                proxy_opt["password"] = u.password
+            print(f"[proxy] using {proxy_opt['server']}")
+
         browser = p.chromium.launch(
             executable_path=CHROMIUM_PATH,
             headless=False,
             args=["--no-sandbox", "--disable-blink-features=AutomationControlled"],
+            proxy=proxy_opt,
         )
         context = browser.new_context(
             viewport={"width": 1280, "height": 800},

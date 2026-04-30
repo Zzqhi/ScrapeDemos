@@ -18,9 +18,22 @@ DEFAULT_APP_KEY = "12610a3853150e888ccd0c6d4c415626"
 OUTPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "captcha_output")
 
 
+def _build_opener():
+    """Build a urlopen opener that respects DX_PROXY env var
+    (e.g. http://user:pass@host:port or socks5h://host:port)."""
+    proxy = os.environ.get("DX_PROXY") or os.environ.get("HTTPS_PROXY") or os.environ.get("HTTP_PROXY")
+    if not proxy:
+        return urllib.request.build_opener()
+    handler = urllib.request.ProxyHandler({"http": proxy, "https": proxy})
+    return urllib.request.build_opener(handler)
+
+
+_OPENER = _build_opener()
+
+
 def https_get(url, headers=None):
     req = urllib.request.Request(url, headers=headers or {})
-    with urllib.request.urlopen(req, timeout=10) as resp:
+    with _OPENER.open(req, timeout=15) as resp:
         return resp.status, resp.read()
 
 

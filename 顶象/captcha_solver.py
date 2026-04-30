@@ -315,7 +315,8 @@ def call_constid(request_meta: Dict[str, Any]) -> Dict[str, Any]:
         headers = request_info["headers"]
 
     req = urllib.request.Request(url, data=body, headers=headers, method=method)
-    with urllib.request.urlopen(req, timeout=10) as resp:
+    opener = _build_opener()
+    with opener.open(req, timeout=15) as resp:
         body = resp.read().decode("utf-8")
     return json.loads(body)
 
@@ -466,6 +467,14 @@ def human_step_dt() -> int:
     return random.randint(150, 220)
 
 
+def _build_opener():
+    proxy = os.environ.get("DX_PROXY") or os.environ.get("HTTPS_PROXY") or os.environ.get("HTTP_PROXY")
+    if not proxy:
+        return urllib.request.build_opener()
+    handler = urllib.request.ProxyHandler({"http": proxy, "https": proxy})
+    return urllib.request.build_opener(handler)
+
+
 def verify_captcha(ac, ak, sid, aid, x, y, c="", jsv="1.5.46.2"):
     """提交验证结果到 /api/v1"""
     post_data = urllib.parse.urlencode({
@@ -489,7 +498,8 @@ def verify_captcha(ac, ak, sid, aid, x, y, c="", jsv="1.5.46.2"):
     }
 
     req = urllib.request.Request(VERIFY_URL, data=post_data, headers=headers)
-    with urllib.request.urlopen(req, timeout=10) as resp:
+    opener = _build_opener()
+    with opener.open(req, timeout=15) as resp:
         body = resp.read().decode("utf-8")
     return json.loads(body)
 
