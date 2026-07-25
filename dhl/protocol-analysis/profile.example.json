@@ -1,0 +1,280 @@
+{
+  "schema_version": 1,
+  "note": "原始环境 + 严格时序 profile。vm_state 仅承载当前尚未还原的 HJ/xF 结果，不能跨 bundle 复用。",
+  "request": {
+    "page_url": "https://www.dhl.com/cn-zh/home/tracking.html?submit=1&tracking-id=1232343",
+    "bundle_url": "https://www.dhl.com/EexEtsloG/YikbLC/1Gg/5rwYbN4J9fSD2tNauX/fA4ZTQ50AwI/ATQ/YR1JydE4B",
+    "referer": "https://www.dhl.com/cn-zh/home/tracking.html?submit=1&tracking-id=1232343"
+  },
+  "bundle": {
+    "version": "/tkt9rmftdIoAoyZGsV9vW+fnEPt4PDXWQBoi0ippAA=",
+    "seed1": 7863636,
+    "default_seed": 8888888,
+    "ffl": "5rwYbN4J9fSD2tNauX"
+  },
+  "cookies": {
+    "bm_sz": "14B02C9DC6F5924499890D5E4049829D~<server-issued>~4272440~4405303",
+    "_abck": "CDE32EFA3176206322EF68C4F6414DA6~-1~<server-issued>",
+    "ak_bmsc": "",
+    "bm_sv": "",
+    "sec_cpt": ""
+  },
+  "environment": {
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+    "app_version": "5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+    "platform": "Win32",
+    "language": "zh-CN",
+    "languages": ["zh-CN"],
+    "product": "Gecko",
+    "product_sub": "20030107",
+    "vendor": "",
+    "vendor_sub": "",
+    "plugins_length": 5,
+    "hardware_concurrency": 12,
+    "device_memory": 8,
+    "max_touch_points": 0,
+    "do_not_track": null,
+    "cookie_enabled": true,
+    "java_enabled": false,
+    "webdriver": false,
+    "screen": {
+      "width": 1920,
+      "height": 1080,
+      "avail_width": 1920,
+      "avail_height": 1032,
+      "color_depth": 24,
+      "pixel_depth": 24
+    },
+    "window": {
+      "inner_width": 929,
+      "inner_height": 917,
+      "outer_width": 160,
+      "device_pixel_ratio": 1
+    },
+    "timezone": {
+      "offset_minutes": -480,
+      "name": "Asia/Shanghai"
+    },
+    "capabilities": {
+      "webrtc": true,
+      "session_storage": true,
+      "local_storage": true,
+      "indexed_db": true,
+      "service_worker": true,
+      "shared_worker": true,
+      "shared_array_buffer": false,
+      "cross_origin_isolated": false,
+      "public_key_credential": true,
+      "media_metadata": true,
+      "media_session": true,
+      "content_index": false,
+      "apple_pay": false,
+      "file_capture": false,
+      "file_path_descriptor": false,
+      "plugin_item_overflow": true,
+      "notification_permission": "default",
+      "plugins_native_getter": true,
+      "mime_types_native_getter": true,
+      "document_create_element_own_descriptor": false,
+      "create_element_length": 1,
+      "create_element_name": "createElement"
+    },
+    "automation": {
+      "cdc": false,
+      "html_webdriver_attr": false,
+      "html_driver_attr": false,
+      "html_selenium_attr": false,
+      "window_webdriver": false,
+      "phantom": false,
+      "dom_automation": false,
+      "playwright_binding": false,
+      "global_flags": {}
+    },
+    "plugins": [
+      "PDF Viewer",
+      "Chrome PDF Viewer",
+      "Chromium PDF Viewer",
+      "Microsoft Edge PDF Viewer",
+      "WebKit built-in PDF"
+    ],
+    "connection": {
+      "effective_type": "4g",
+      "rtt": -1,
+      "rtt_code_override": 0,
+      "type": null
+    },
+    "ua_client_hints": {
+      "window_brands": [],
+      "worker_brands": [
+        {"brand": "Not/A)Brand", "version": "8"},
+        {"brand": "Chromium", "version": "126"}
+      ],
+      "mobile": false,
+      "window_architecture": "",
+      "worker_architecture": "x86",
+      "window_bitness": "",
+      "worker_bitness": "64",
+      "model": "",
+      "window_platform": "",
+      "worker_platform": "Windows",
+      "window_platform_version": "",
+      "worker_platform_version": "15.0.0",
+      "window_ua_full_version": "",
+      "worker_ua_full_version": "126.0.6478.182",
+      "wow64": false,
+      "window_full_version_list": [],
+      "worker_full_version_list": [
+        {"brand": "Not/A)Brand", "version": "8.0.0.0"},
+        {"brand": "Chromium", "version": "126.0.6478.182"}
+      ]
+    },
+    "webgl": {
+      "vendor": "Google Inc. (Intel)",
+      "renderer": "ANGLE (Intel, Intel(R) UHD Graphics 730 (0x00004692) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "vendor2": "Google Inc. (Intel)",
+      "renderer2": "ANGLE (Intel, Intel(R) UHD Graphics 730 (0x00004692) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+    },
+    "iframe": {
+      "chrome_keys": ["csp", "loadTimes", "runtime"],
+      "ico_hash_override": "070f409b82df3bdd2f51a6415c7895353c153c47fe6dd8a0f87f3d14c46ccb2b",
+      "chrome_object": true,
+      "hardware_concurrency": 12,
+      "plugins_length": 5,
+      "device_memory": 8,
+      "webdriver": false,
+      "webgl_vendor": "Google Inc. (Intel)"
+    },
+    "speech_voices": [{"voiceURI": "placeholder", "lang": "zh-CN"}, {"voiceURI": "placeholder2", "lang": "zh-CN"}, {"voiceURI": "placeholder3", "lang": "zh-CN"}],
+    "speech_hash_override": "05928f174f13f6a725760051bc7f54a20cabde850872c6a6e392e777518a1bef",
+    "random": 0.998614569499,
+    "storage_quota_bytes": 154292850000,
+    "permissions": {
+      "speaker": "invalid",
+      "device-info": "invalid",
+      "bluetooth": "invalid",
+      "ambient-light-sensor": "prompt",
+      "accelerometer": "granted",
+      "gyroscope": "granted",
+      "magnetometer": "granted",
+      "clipboard": "granted",
+      "accessibility-events": "invalid",
+      "per_override": "99999944949322243999"
+    },
+    "performance_memory": {
+      "js_heap_size_limit": 4294705152,
+      "total_js_heap_size": 32802090,
+      "used_js_heap_size": 30640038
+    },
+    "media_support": {
+      "audio_mpeg": true,
+      "audio_mp4": true,
+      "audio_ogg": false,
+      "audio_webm": true,
+      "video_mp4": true,
+      "video_webm": true,
+      "elapsed_ms": 0
+    },
+    "audio_fingerprint": {
+      "offline_context_available": true,
+      "value": "fb16a83e",
+      "decode_probe": "000"
+    },
+    "forms": [],
+    "form_records_override": "0,0,0,0,4659,113,0;0,0,0,0,4819,113,0;0,0,0,0,4674,113,0;0,0,0,0,4840,113,0;",
+    "events": {
+      "start_ts": 1784870996468,
+      "capture_offset_ms": 21519,
+      "mouse": [],
+      "keyboard": [],
+      "touch": [],
+      "pointer": [],
+      "device_motion": [
+        {"index": 0, "ts": 1784871018471, "type": 0, "acc_x": -1, "acc_y": -1, "acc_z": -1, "gravity_x": -1, "gravity_y": -1, "gravity_z": -1, "alpha": -1, "beta": -1, "gamma": -1, "trusted": true}
+      ],
+      "device_orientation": [
+        {"index": 0, "ts": 1784871018473, "type": 0, "alpha": -1, "beta": -1, "gamma": -1, "trusted": true}
+      ],
+      "visibility": [],
+      "wheel": [],
+      "trusted_count": 0,
+      "untrusted_count": 0,
+      "missing_trusted_count": 0,
+      "persistent": {"trusted": 0, "untrusted": 0, "missing": 0},
+      "target_counts": {},
+      "fingerprint_elapsed_ms": 12,
+      "delt_override": 44156,
+      "ssts_override": 44157,
+      "tst_override": 44008,
+      "tot_vel_override": 44008
+    },
+    "derived": {
+      "sww_ext": "2|0,0,0",
+      "sww_shared_worker_runtime_ms": 21465,
+      "sww_window_runtime_ms": 21521,
+      "date_string": "Fri Jul 24 2026 13:30:40 GMT+0800 (中国标准时间)",
+      "worker_oscpu": null,
+      "chrome_runtime_hash": "-1",
+      "plugins_install_index": 7,
+      "private_token_supported": true,
+      "srd": "0",
+      "hls_tail": "",
+      "s017": "0,0,0,0"
+    }
+  },
+  "vm_state": {
+    "bundle_version": "/tkt9rmftdIoAoyZGsV9vW+fnEPt4PDXWQBoi0ippAA=",
+    "environment_seed": 30261693,
+    "din_order": [
+      "wdr", "ucs", "ran", "nap", "xag", "dau", "swi", "she", "wih", "nps",
+      "pha", "tsd", "hal", "hz1", "wiw", "npl", "ibr", "asw", "wow", "ash",
+      "adp", "nal", "ua"
+    ],
+    "dvc_hash": "33jk9kj3a9aic9al3uyv",
+    "dvc_hash_elapsed_ms": 22,
+    "dvc_plugins": "e+k+a+f+c+l+g+i+b+h+d+j+"
+  },
+  "timeline": {
+    "tracking_start_ts": 1784870996468,
+    "sensor_start_ts": 1784870996468,
+    "capture_offset_ms": 21519,
+    "stages": [
+      {"name": "T0", "scheduled_at": 1000, "completed_at": 21515, "fields": ["dsi", "s017", "s148"]},
+      {"name": "T1", "scheduled_at": 21515, "completed_at": 21519, "fields": ["s002", "s151", "s153", "s150", "s157", "wsl", "hls"]},
+      {"name": "S158", "scheduled_at": 21519, "completed_at": 21519, "fields": ["s158"]},
+      {"name": "S162", "scheduled_at": 21519, "completed_at": 21519, "fields": ["s162"]},
+      {"name": "S163", "scheduled_at": 21519, "completed_at": 21519, "fields": ["s163"]},
+      {"name": "S173", "scheduled_at": 21519, "completed_at": 21519, "fields": ["s173"]},
+      {"name": "S127", "scheduled_at": 21519, "completed_at": 21519, "fields": ["s127"]},
+      {"name": "T2", "scheduled_at": 21519, "completed_at": 21519, "fields": ["s003"]},
+      {"name": "T3", "scheduled_at": 21519, "completed_at": 21519, "fields": ["sww"]}
+    ]
+  },
+  "state": {
+    "send_reason": 10,
+    "send_count": 1,
+    "aj_type_bitmask": 0,
+    "pow_state_count": 0,
+    "abck_previous_first_segment": "",
+    "cookie_seed_override": null,
+    "jsrf1": 93131,
+    "jsrf2": 25,
+    "signals": 0,
+    "headless_hrd": "0",
+    "random": 0.998614569499,
+    "ajr_fallback_value": 44008,
+    "n_fas_override": 30261693,
+    "timing": [51, 21519, 0, 0, 15, 22582]
+  },
+  "overrides": {
+    "payload": {
+      "s148": "3861",
+      "s151": "9494",
+      "s153": "588",
+      "s150": "8789",
+      "s157": "[1,0,1,1,0,1,1]",
+      "s127": "142.80"
+    },
+    "mst": {},
+    "sww": {}
+  }
+}
